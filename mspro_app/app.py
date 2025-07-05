@@ -20,7 +20,7 @@ def load_user(user_id):
     return User.query.get(user_id)
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='static', template_folder='templates')
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
@@ -169,7 +169,18 @@ def create_app():
     @app.route('/api/filter_data')
     @login_required
     def filter_data():
-        return {} # Return empty JSON
+        # Return a correctly structured but empty/zeroed response
+        empty_summary = {
+            'total_booking_revenue': 0, 'total_monthly_expenses': 0,
+            'gross_profit': 0, 'management_fee': 0,
+            'monthly_income': 0, 'total_occupancy_rate': 0
+        }
+        empty_analysis = {
+            'total_bookings_count': 0, 'average_duration': 0,
+            'average_daily_rate': 0, 'revpar': 0,
+            'average_monthly_revenue': 0, 'average_monthly_expenses': 0
+        }
+        return {'summary': empty_summary, 'analysis': empty_analysis}
 
     @app.route('/api/chart_data')
     @login_required
