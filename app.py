@@ -2,8 +2,18 @@ import os
 from flask import Flask, render_template, redirect, url_for, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
-from models import db, User
+from flask_migrate import Migrate
+from dotenv import load_dotenv
+
+from models import db, User, Booking, Expense
 from forms import LoginForm, RegisterForm
+
+load_dotenv()
+
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+migrate = Migrate()
+
 
 login_manager = LoginManager()
 login_manager.login_view = 'login'
@@ -26,6 +36,7 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
+    migrate.init_app(app, db)
 
     @app.route('/')
     @app.route('/index')
