@@ -25,7 +25,7 @@ class Booking(db.Model):
     checkout_date = db.Column(db.Date, nullable=False)
     channel = db.Column(db.String(100))
     on_offline = db.Column(db.String(50))
-    booking_number = db.Column(db.String(100), unique=True, nullable=True)
+    booking_number = db.Column(db.String(100), nullable=True)
     pax = db.Column(db.Integer)
     duration = db.Column(db.Integer)
     price = db.Column(db.Float)
