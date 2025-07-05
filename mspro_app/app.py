@@ -5,8 +5,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_migrate import Migrate
 from dotenv import load_dotenv
 
-from models import db, User, Booking, Expense
-from forms import LoginForm, RegisterForm
+from .models import db, User, Booking, Expense
+from .forms import LoginForm, RegisterForm
 
 load_dotenv()
 
@@ -14,9 +14,6 @@ login_manager = LoginManager()
 login_manager.login_view = 'login'
 migrate = Migrate()
 
-
-login_manager = LoginManager()
-login_manager.login_view = 'login'
 
 @login_manager.user_loader
 def load_user(user_id):
