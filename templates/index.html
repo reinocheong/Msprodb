@@ -1,7 +1,699 @@
-{% extends "base.html" %}
-{% block title %}Home{% endblock %}
-{% block content %}
-    <h1>Hello, {{ username }}!</h1>
-    <p>Welcome to your new dashboard.</p>
-    <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>民宿财务概览</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="loading-text">���载中...</div>
+    </div>
+
+    <div class="container-fluid">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 rounded-3 shadow-sm">
+            <div class="container">
+                <a class="navbar-brand" href="{{ url_for('index') }}">
+                    <i class="fas fa-home me-2"></i>民宿财务概览
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <span class="nav-link">欢迎, {{ current_user.id }}!</span>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('reports') }}">
+                                <i class="fas fa-chart-bar me-1"></i>报表中心
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('calendar_view') }}">
+                                <i class="fas fa-calendar-alt me-1"></i>预订日历
+                            </a>
+                        </li>
+                        {% if current_user.role == 'admin' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_panel') }}">
+                                <i class="fas fa-user-cog me-1"></i>后台管理
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i>退出
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <h1 class="text-center mb-5 text-success display-4 fw-bold">民宿财务概览</h1>
+
+        <section class="card shadow-sm mb-5 p-4 bg-light-subtle">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-filter me-2"></i>筛选条件</h2>
+                <div class="row g-3 align-items-end justify-content-center">
+                    <div class="col-md-3">
+                        <label for="yearSelect" class="form-label"><i class="fas fa-calendar-alt me-2"></i>年份:</label>
+                        <select id="yearSelect" class="form-select" onchange="applyFilters()">
+                            {% for year in years_options %}
+                                <option value="{{ year }}" {% if year|string == default_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="monthSelect" class="form-label"><i class="fas fa-calendar-check me-2"></i>月份:</label>
+                        <select id="monthSelect" class="form-select" onchange="applyFilters()">
+                            <option value="">所有月份</option>
+                            {% for month in months_options %}
+                                <option value="{{ month.value }}">{{ month.text }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label for="roomTypeSelect" class="form-label"><i class="fas fa-bed me-2"></i>房型:</label>
+                        <select id="roomTypeSelect" class="form-select" onchange="applyFilters()">
+                            {% for room_type in room_types %}
+                                <option value="{{ room_type }}">{{ room_type }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 d-grid">
+                        <button onclick="applyFilters()" class="btn btn-primary">
+                            <i class="fas fa-filter me-2"></i>应用筛选
+                        </button>
+                    </div>
+                </div>
+                <div class="row g-3 justify-content-center mt-3">
+                    <div class="col-md-4 d-grid">
+                        <button onclick="toggleDetailedRecords()" id="toggleDetailedRecordsButton" class="btn btn-outline-secondary">
+                            <i class="fas fa-eye me-2"></i>查看详细
+                        </button>
+                    </div>
+                    <div class="col-md-4 d-grid">
+                        <button onclick="downloadMonthlyStatement()" class="btn btn-outline-info">
+                            <i class="fas fa-download me-2"></i>下载月结单
+                        </button>
+                    </div>
+                    {% if current_user.role == 'admin' %}
+                    <div class="col-md-4 d-grid">
+                        <a href="{{ url_for('add_booking') }}" class="btn btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>新增预订
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <section class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5 summary-cards">
+            <div class="col">
+                <div class="card h-100 shadow-sm revenue" data-card-type="revenue">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-hand-holding-usd me-2"></i>预订收入</h5>
+                        <p id="totalBookingRevenue" class="card-text">{{ '%.2f' | format(summary.total_booking_revenue) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm expenses" data-card-type="expenses">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-money-bill-wave me-2"></i>月支出</h5>
+                        <p id="totalMonthlyExpenses" class="card-text">{{ '%.2f' | format(summary.total_monthly_expenses) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm profit" data-card-type="profit">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-chart-line me-2"></i>毛利</h5>
+                        <p id="grossProfit" class="card-text">{{ '%.2f' | format(summary.gross_profit) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm fee" data-card-type="fee">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-percent me-2"></i>管理费 (30%)</h5>
+                        <p id="managementFee" class="card-text">{{ '%.2f' | format(summary.management_fee) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm income" data-card-type="income">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-piggy-bank me-2"></i>当月收入</h5>
+                        <p id="monthlyIncome" class="card-text">{{ '%.2f' | format(summary.monthly_income) }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col">
+                <div class="card h-100 shadow-sm occupancy" data-card-type="occupancy">
+                    <div class="card-body text-center">
+                        <h5 class="card-title text-muted"><i class="fas fa-bed me-2"></i>入住率</h5>
+                        <p id="totalOccupancyRate" class="card-text">{{ '%.2f' | format(summary.total_occupancy_rate) }}%</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 新增的年度数据分析模块 -->
+        <section id="annualAnalysisSection" class="card shadow-sm mb-5 p-4 bg-light-subtle" style="display: none;">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-chart-pie me-2"></i>年度数据分析</h2>
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-calendar-check me-2"></i>年度总预订数</h5>
+                                <p id="totalBookingsCount" class="card-text">{{ analysis.total_bookings_count }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-clock me-2"></i>平均入住天数</h5>
+                                <p id="averageDuration" class="card-text">{{ '%.2f' | format(analysis.average_duration) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-tag me-2"></i>平均每晚房价 (ADR)</h5>
+                                <p id="averageDailyRate" class="card-text">{{ '%.2f' | format(analysis.average_daily_rate) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-chart-pie me-2"></i>每间可用房收入 (RevPAR)</h5>
+                                <p id="revpar" class="card-text">{{ '%.2f' | format(analysis.revpar) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-wallet me-2"></i>月平均收入</h5>
+                                <p id="averageMonthlyRevenue" class="card-text">{{ '%.2f' | format(analysis.average_monthly_revenue) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-muted"><i class="fas fa-receipt me-2"></i>月平均支出</h5>
+                                <p id="averageMonthlyExpenses" class="card-text">{{ '%.2f' | format(analysis.average_monthly_expenses) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card shadow-sm mb-5 p-4">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-chart-area me-2"></i>月度收支概览</h2>
+                <canvas id="monthlyChart" class="w-100" style="max-height: 400px;"></canvas>
+            </div>
+        </section>
+
+        <section class="card shadow-sm mb-5 p-4" id="detailedRecordsSection" style="display: none;">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-table me-2"></i>详细记录</h2>
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered">
+                        <thead>
+                            <tr>
+                                <th>预订号</th>
+                                <th>日期</th>
+                                <th>类型</th>
+                                <th>房型</th>
+                                <th>入住日期</th>
+                                <th>退房日期</th>
+                                <th>渠道</th>
+                                <th>在线/离线</th>
+                                <th>人数</th>
+                                <th>天数</th>
+                                <th>价格</th>
+                                <th>打扫费</th>
+                                <th>平台费</th>
+                                <th>总收入</th>
+                                <th>额外支出类别</th>
+                                <th>额外支出金额</th>
+                                {% if current_user.role == 'admin' %}
+                                <th>操作</th>
+                                {% endif %}
+                            </tr>
+                        </thead>
+                        <tbody id="dataRows">
+                            <tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <script>
+        let monthlyChart; // Global chart instance
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const current_user_role = "{{ current_user_role }}";
+        const editBookingUrl = "{{ edit_booking_url_pattern }}";
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Register Chart.js DataLabels plugin
+            Chart.register(ChartDataLabels);
+            
+            fetchChartData();
+            updateCardBorderColors();
+
+            // 添加事件监听器来切换详细记录的显示
+            document.getElementById('toggleDetailedRecordsButton').addEventListener('click', toggleDetailedRecords);
+        });
+
+        // 确保在所有内容加载完毕后隐藏加载指示器
+        window.addEventListener('load', function() {
+            loadingOverlay.classList.remove('show');
+        });
+
+        async function applyFilters() {
+            loadingOverlay.classList.add('show'); // 显示加载指示器
+
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const roomType = document.getElementById('roomTypeSelect').value;
+
+            const queryParams = new URLSearchParams({
+                year: year,
+                month: month,
+                room_type: roomType
+            }).toString();
+
+            try {
+                const response = await fetch(`/api/filter_data?${queryParams}`);
+                const result = await response.json();
+
+                updateSummary(result.summary);
+                updateAnalysis(result.analysis); // 更新年度分析数据
+                // 筛选器应用时，隐藏详细记录并重置其内容
+                document.getElementById('detailedRecordsSection').style.display = 'none';
+                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
+                document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
+
+                await fetchChartData(); // Re-fetch chart data with new filters
+                updateCardBorderColors(); // 更新卡片边框颜色
+
+            } catch (error) {
+                console.error('Error applying filters:', error);
+                alert('加载数据失败。请检查后端服务器日志或尝试刷新页面。');
+            } finally {
+                // Short delay to allow animation to show for very fast loads
+                setTimeout(() => {
+                    loadingOverlay.classList.remove('show'); // 隐藏加载指示器
+                }, 300);
+            }
+        }
+
+        function updateSummary(summary) {
+            document.getElementById('totalBookingRevenue').innerText = summary.total_booking_revenue.toFixed(2);
+            document.getElementById('totalMonthlyExpenses').innerText = summary.total_monthly_expenses.toFixed(2);
+            document.getElementById('grossProfit').innerText = summary.gross_profit.toFixed(2);
+            document.getElementById('managementFee').innerText = summary.management_fee.toFixed(2);
+            document.getElementById('monthlyIncome').innerText = summary.monthly_income.toFixed(2);
+            document.getElementById('totalOccupancyRate').innerText = summary.total_occupancy_rate.toFixed(2) + '%';
+        }
+
+        function updateAnalysis(analysis) {
+            const month = document.getElementById('monthSelect').value;
+            const analysisSection = document.getElementById('annualAnalysisSection');
+
+            if (month === '') { // 仅当选择了“所有月份”时显示
+                analysisSection.style.display = 'block';
+                document.getElementById('totalBookingsCount').innerText = analysis.total_bookings_count;
+                document.getElementById('averageDuration').innerText = analysis.average_duration.toFixed(2);
+                document.getElementById('averageDailyRate').innerText = analysis.average_daily_rate.toFixed(2);
+                document.getElementById('revpar').innerText = analysis.revpar.toFixed(2);
+                document.getElementById('averageMonthlyRevenue').innerText = analysis.average_monthly_revenue.toFixed(2);
+                document.getElementById('averageMonthlyExpenses').innerText = analysis.average_monthly_expenses.toFixed(2);
+            } else {
+                analysisSection.style.display = 'none'; // 否则隐藏
+            }
+        }
+
+        function updateCardBorderColors() {
+            // Use querySelectorAll to get all cards
+            const cards = document.querySelectorAll('.summary-cards .card');
+
+            cards.forEach(card => {
+                const cardType = card.dataset.cardType; // Get the type from data-card-type attribute
+                let value;
+                let color;
+
+                switch (cardType) {
+                    case 'revenue':
+                        value = parseFloat(document.getElementById('totalBookingRevenue').innerText);
+                        color = '#28a745'; // Bootstrap success green
+                        break;
+                    case 'expenses':
+                        value = parseFloat(document.getElementById('totalMonthlyExpenses').innerText);
+                        color = '#dc3545'; // Bootstrap danger red
+                        break;
+                    case 'profit':
+                        value = parseFloat(document.getElementById('grossProfit').innerText);
+                        color = value >= 0 ? '#007bff' : '#dc3545'; // Bootstrap primary blue or danger red
+                        break;
+                    case 'fee':
+                        value = parseFloat(document.getElementById('managementFee').innerText);
+                        color = '#6c757d'; // Bootstrap secondary gray
+                        break;
+                    case 'income':
+                        value = parseFloat(document.getElementById('monthlyIncome').innerText);
+                        color = value >= 0 ? '#17a2b8' : '#dc3545'; // Bootstrap info teal or danger red
+                        break;
+                    case 'occupancy':
+                        value = parseFloat(document.getElementById('totalOccupancyRate').innerText);
+                        color = '#ffc107'; // Bootstrap warning yellow
+                        break;
+                    default:
+                        color = '#e9ecef'; // Bootstrap light gray
+                }
+                card.style.borderTopColor = color;
+                // You might also want to update the text color if it changes based on value
+                card.querySelector('.card-text').style.color = color;
+            });
+        }
+
+
+        function updateDetailedRecords(data) {
+            const dataRows = document.getElementById('dataRows');
+            dataRows.innerHTML = ''; // Clear existing rows
+
+            if (data && data.length > 0) {
+                data.forEach(record => {
+                    const row = document.createElement('tr');
+                    let unitNameDisplay = record.unit_name;
+                    if (record.unit_name === '_GENERAL_EXPENSE_') {
+                        unitNameDisplay = '通用';
+                    }
+
+                    row.innerHTML = `
+                        <td>${record.type === 'booking' ? record.booking_number : '-'}</td>
+                        <td>${record.date}</td>
+                        <td><span class="badge ${record.type === 'booking' ? 'bg-success' : 'bg-danger'}">${record.type === 'booking' ? '预订' : '支出'}</span></td>
+                        <td>${unitNameDisplay}</td>
+                        <td>${record.type === 'booking' ? record.checkin : '-'}</td>
+                        <td>${record.type === 'booking' ? record.checkout : '-'}</td>
+                        <td>${record.type === 'booking' ? record.channel : '-'}</td>
+                        <td>${record.type === 'booking' ? record.on_offline : '-'}</td>
+                        <td class="text-center">${record.type === 'booking' ? record.pax : '-'}</td>
+                        <td class="text-center">${record.type === 'booking' ? record.duration : '-'}</td>
+                        <td class="text-end">${record.type === 'booking' ? record.price.toFixed(2) : '-'}</td>
+                        <td class="text-end">${record.type === 'booking' ? record.cleaning_fee.toFixed(2) : '-'}</td>
+                        <td class="text-end">${record.type === 'booking' ? record.platform_charge.toFixed(2) : '-'}</td>
+                        <td class="text-end">${record.type === 'booking' ? record.total_booking_revenue.toFixed(2) : '-'}</td>
+                        <td>${record.type === 'expense' ? record.additional_expense_category : '-'}</td>
+                        <td class="text-end">${record.type === 'expense' ? record.additional_expense_amount.toFixed(2) : '-'}</td>
+                        ${current_user_role === 'admin' ? `
+                            <td>
+                                ${record.type === 'booking' ? `
+                                    ${record.booking_number ? `<a href="/edit_booking/${record.booking_number}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>` : '-'}
+                                ` : record.type === 'expense' ? `
+                                    ${record.expense_id ? `<a href="/edit_expense/${record.expense_id}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>` : '-'}
+                                ` : '-'}
+                            </td>
+                        ` : ''}
+                    `;
+                    dataRows.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="16" class="text-center text-muted">没有数据可显示。</td>`;
+                dataRows.appendChild(row);
+            }
+        }
+
+        async function toggleDetailedRecords() {
+            const detailedRecordsSection = document.getElementById('detailedRecordsSection');
+            const dataRows = document.getElementById('dataRows');
+            const toggleButton = document.getElementById('toggleDetailedRecordsButton');
+
+            if (detailedRecordsSection.style.display === 'none') {
+                // 显示详细记录
+                loadingOverlay.classList.add('show');
+                const year = document.getElementById('yearSelect').value;
+                const month = document.getElementById('monthSelect').value;
+                const roomType = document.getElementById('roomTypeSelect').value;
+
+                const queryParams = new URLSearchParams({
+                    year: year,
+                    month: month,
+                    room_type: roomType
+                }).toString();
+
+                try {
+                    const response = await fetch(`/api/detailed_data?${queryParams}`);
+                    const result = await response.json();
+                    updateDetailedRecords(result.data);
+                    detailedRecordsSection.style.display = 'block';
+                    toggleButton.innerHTML = '<i class="fas fa-eye-slash me-2"></i>隐藏详细';
+                } catch (error) {
+                    console.error('Error fetching detailed data:', error);
+                    alert('加载详细数据失败。请检查后端服务器日志或尝试刷新页面。');
+                } finally {
+                    setTimeout(() => {
+                        loadingOverlay.classList.remove('show');
+                    }, 300);
+                }
+            } else {
+                // 隐藏详细记录
+                detailedRecordsSection.style.display = 'none';
+                dataRows.innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
+                toggleButton.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
+            }
+        }
+
+        async function fetchChartData() {
+            const year = document.getElementById('yearSelect').value;
+            const roomType = document.getElementById('roomTypeSelect').value;
+            const month = ''; // For chart data, we always want all months for the selected year and room type
+
+            const queryParams = new URLSearchParams({
+                year: year,
+                month: month, // Pass empty month to get data for all months
+                room_type: roomType
+            }).toString();
+
+            try {
+                const response = await fetch(`/api/chart_data?${queryParams}`);
+                const chartData = await response.json();
+
+                if (monthlyChart) {
+                    monthlyChart.destroy(); // Destroy existing chart before creating a new one
+                }
+
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+
+                // 创建渐变色函数
+                function getGradient(chart, colorStart, colorEnd) {
+                    const { ctx, chartArea } = chart;
+                    if (!chartArea) {
+                        return null;
+                    }
+                    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                    gradient.addColorStop(0, colorEnd);
+                    gradient.addColorStop(1, colorStart);
+                    return gradient;
+                }
+
+                monthlyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartData.months,
+                        datasets: [
+                            {
+                                label: '月度收入 (MYR)',
+                                data: chartData.monthly_revenue,
+                                backgroundColor: function(context) {
+                                    return getGradient(context.chart, 'rgba(40, 167, 69, 0.8)', 'rgba(129, 199, 132, 0.8)'); /* 从深绿到浅绿渐变 */
+                                },
+                                borderColor: 'rgba(40, 167, 69, 1)',
+                                borderWidth: 1,
+                                borderRadius: 6,
+                                hoverBackgroundColor: 'rgba(40, 167, 69, 0.9)',
+                                hoverBorderColor: 'rgba(40, 167, 69, 1)',
+                            },
+                            {
+                                label: '月度支出 (MYR)',
+                                data: chartData.monthly_expenses,
+                                backgroundColor: function(context) {
+                                    return getGradient(context.chart, 'rgba(220, 53, 69, 0.8)', 'rgba(239, 154, 154, 0.8)'); /* 从深红到浅红渐变 */
+                                },
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                borderWidth: 1,
+                                borderRadius: 6,
+                                hoverBackgroundColor: 'rgba(220, 53, 69, 0.9)',
+                                hoverBorderColor: 'rgba(220, 53, 69, 1)',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 1000,
+                            easing: 'easeInOutQuart'
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        family: 'Open Sans'
+                                    },
+                                    color: '#6c757d',
+                                    usePointStyle: true,
+                                    boxWidth: 10
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                titleFont: {
+                                    size: 16,
+                                    family: 'Open Sans',
+                                    weight: 'bold'
+                                },
+                                bodyFont: {
+                                    size: 14,
+                                    family: 'Open Sans'
+                                },
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(context.parsed.y);
+                                        }
+                                        return label;
+                                    }
+                                }
+                            },
+                            datalabels: {
+                                anchor: 'end',
+                                align: 'top',
+                                formatter: function(value, context) {
+                                    return value.toFixed(2);
+                                },
+                                color: '#343a40',
+                                font: {
+                                    weight: 'bold',
+                                    size: 10
+                                },
+                                offset: 4,
+                                display: function(context) {
+                                    return context.dataset.data[context.dataIndex] > (context.chart.scales.y.max * 0.05);
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 12,
+                                        family: 'Open Sans'
+                                    },
+                                    color: '#6c757d'
+                                },
+                                title: {
+                                    display: true,
+                                    text: '月份',
+                                    font: {
+                                        size: 14,
+                                        family: 'Open Sans',
+                                        weight: 'bold'
+                                    },
+                                    color: '#343a40'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: '#e0e0e0',
+                                    borderDash: [3, 3]
+                                },
+                                ticks: {
+                                    font: {
+                                        size: 12,
+                                        family: 'Open Sans'
+                                    },
+                                    color: '#6c757d'
+                                },
+                                title: {
+                                    display: true,
+                                    text: '金额 (MYR)',
+                                    font: {
+                                        size: 14,
+                                        family: 'Open Sans',
+                                        weight: 'bold'
+                                    },
+                                    color: '#343a40'
+                                }
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Error fetching chart data:', error);
+            }
+        }
+
+        async function downloadMonthlyStatement() {
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const roomType = document.getElementById('roomTypeSelect').value;
+
+            const queryParams = new URLSearchParams({
+                year: year,
+                month: month,
+                room_type: roomType
+            }).toString();
+
+            window.location.href = `/download_monthly_statement?${queryParams}`;
+        }
+    </script>
+</body>
+</html>

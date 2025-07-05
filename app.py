@@ -31,7 +31,33 @@ def create_app():
     @app.route('/index')
     @login_required
     def index():
-        return render_template('index.html', username=current_user.username)
+        # Dummy data for the new template
+        dummy_summary = {
+            'total_booking_revenue': 12345.67,
+            'total_monthly_expenses': 3456.78,
+            'gross_profit': 8888.89,
+            'management_fee': 2666.67,
+            'monthly_income': 6222.22,
+            'total_occupancy_rate': 75.5
+        }
+        dummy_analysis = {
+            'total_bookings_count': 150,
+            'average_duration': 2.5,
+            'average_daily_rate': 450.75,
+            'revpar': 340.50,
+            'average_monthly_revenue': 15000.00,
+            'average_monthly_expenses': 4000.00
+        }
+        return render_template('index.html', 
+                               username=current_user.username,
+                               summary=dummy_summary,
+                               analysis=dummy_analysis,
+                               years_options=[2024, 2023],
+                               default_year='2024',
+                               months_options=[{'value': i, 'text': f'{i}月'} for i in range(1, 13)],
+                               room_types=['所有房型', '大床房', '双床房'],
+                               current_user_role=current_user.role,
+                               edit_booking_url_pattern='/edit_booking/{}')
 
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -71,5 +97,51 @@ def create_app():
     def logout():
         logout_user()
         return redirect(url_for('login'))
+
+    # Placeholder routes for the new template
+    @app.route('/reports')
+    @login_required
+    def reports():
+        flash('报表中心功能正在开发中。', 'info')
+        return redirect(url_for('index'))
+
+    @app.route('/calendar_view')
+    @login_required
+    def calendar_view():
+        flash('预订日历功能正在开发中。', 'info')
+        return redirect(url_for('index'))
+
+    @app.route('/admin_panel')
+    @login_required
+    def admin_panel():
+        flash('后台管理功能正在开发中。', 'info')
+        return redirect(url_for('index'))
+
+    @app.route('/add_booking')
+    @login_required
+    def add_booking():
+        flash('新增预订功能正在开发中。', 'info')
+        return redirect(url_for('index'))
+
+    @app.route('/api/filter_data')
+    @login_required
+    def filter_data():
+        return {} # Return empty JSON
+
+    @app.route('/api/chart_data')
+    @login_required
+    def chart_data():
+        return {} # Return empty JSON
+        
+    @app.route('/api/detailed_data')
+    @login_required
+    def detailed_data():
+        return {} # Return empty JSON
+
+    @app.route('/download_monthly_statement')
+    @login_required
+    def download_monthly_statement():
+        flash('下载月结单功能正在开发中。', 'info')
+        return redirect(url_for('index'))
 
     return app
