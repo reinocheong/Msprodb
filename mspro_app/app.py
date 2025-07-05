@@ -39,31 +39,66 @@ def create_app():
     @app.route('/index')
     @login_required
     def index():
-        # Dummy data for the new template
-        dummy_summary = {
-            'total_booking_revenue': 12345.67,
-            'total_monthly_expenses': 3456.78,
-            'gross_profit': 8888.89,
-            'management_fee': 2666.67,
-            'monthly_income': 6222.22,
-            'total_occupancy_rate': 75.5
+        # Query real data from the database
+        bookings = Booking.query.all()
+        expenses = Expense.query.all()
+
+        # --- Perform Calculations ---
+        total_booking_revenue = sum(b.total_revenue for b in bookings if b.total_revenue)
+        total_monthly_expenses = sum(e.debit for e in expenses if e.debit)
+        gross_profit = total_booking_revenue - total_monthly_expenses
+        management_fee = gross_profit * 0.30  # 30% management fee
+        monthly_income = gross_profit - management_fee
+        
+        # Occupancy rate calculation needs more context (e.g., total available room-nights)
+        # For now, we'll use a placeholder value.
+        total_occupancy_rate = 0 
+        if bookings:
+            # A simple placeholder logic: (booked days / (365 * num_rooms))
+            # This is not accurate and needs to be replaced with real logic.
+            # Assuming 5 rooms for calculation.
+            total_days_booked = sum(b.duration for b in bookings if b.duration)
+            total_occupancy_rate = (total_days_booked / (365 * 5)) * 100 if total_days_booked else 0
+
+
+        summary = {
+            'total_booking_revenue': total_booking_revenue,
+            'total_monthly_expenses': total_monthly_expenses,
+            'gross_profit': gross_profit,
+            'management_fee': management_fee,
+            'monthly_income': monthly_income,
+            'total_occupancy_rate': total_occupancy_rate
         }
-        dummy_analysis = {
-            'total_bookings_count': 150,
-            'average_duration': 2.5,
-            'average_daily_rate': 450.75,
-            'revpar': 340.50,
-            'average_monthly_revenue': 15000.00,
-            'average_monthly_expenses': 4000.00
+
+        # --- Analysis data (placeholders for now, needs real logic) ---
+        analysis = {
+            'total_bookings_count': len(bookings),
+            'average_duration': (sum(b.duration for b in bookings if b.duration) / len(bookings)) if bookings else 0,
+            'average_daily_rate': (sum(b.price for b in bookings if b.price) / len(bookings)) if bookings else 0,
+            'revpar': 0, # Placeholder
+            'average_monthly_revenue': 0, # Placeholder
+            'average_monthly_expenses': 0 # Placeholder
         }
+
+        # --- Options for filters ---
+        # Get distinct years from bookings and expenses
+        booking_years = db.session.query(db.extract('year', Booking.checkin_date)).distinct().all()
+        expense_years = db.session.query(db.extract('year', Expense.date)).distinct().all()
+        all_years = sorted(set([y[0] for y in booking_years] + [y[0] for y in expense_years]), reverse=True)
+
+        # Get distinct room types (unit_name)
+        room_types = db.session.query(Booking.unit_name).distinct().all()
+        room_types = ['所有房型'] + sorted([r[0] for r in room_types])
+
+
         return render_template('index.html', 
                                username=current_user.username,
-                               summary=dummy_summary,
-                               analysis=dummy_analysis,
-                               years_options=[2024, 2023],
-                               default_year='2024',
+                               summary=summary,
+                               analysis=analysis,
+                               years_options=all_years,
+                               default_year=str(max(all_years)) if all_years else '',
                                months_options=[{'value': i, 'text': f'{i}月'} for i in range(1, 13)],
-                               room_types=['所有房型', '大床房', '双床房'],
+                               room_types=room_types,
                                current_user_role=current_user.role,
                                edit_booking_url_pattern='/edit_booking/{}')
 
