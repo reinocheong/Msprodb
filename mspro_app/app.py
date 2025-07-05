@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from sqlalchemy import extract
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_migrate import Migrate
@@ -190,7 +191,69 @@ def create_app():
     @app.route('/api/detailed_data')
     @login_required
     def detailed_data():
-        return {} # Return empty JSON
+        year = request.args.get('year', type=int)
+        month = request.args.get('month', type=int)
+        room_type = request.args.get('room_type')
+
+        # Start with a base query
+        booking_query = Booking.query
+        expense_query = Expense.query
+
+        if year:
+            booking_query = booking_query.filter(extract('year', Booking.checkin_date) == year)
+            expense_query = expense_query.filter(extract('year', Expense.date) == year)
+        
+        if month:
+            booking_query = booking_query.filter(extract('month', Booking.checkin_date) == month)
+            expense_query = expense_query.filter(extract('month', Expense.date) == month)
+
+        if room_type and room_type != '所有房型':
+            booking_query = booking_query.filter(Booking.unit_name == room_type)
+            expense_query = expense_query.filter(Expense.unit_name == room_type)
+
+        bookings = booking_query.all()
+        expenses = expense_query.all()
+
+        # Combine and format data
+        combined_data = []
+        for b in bookings:
+            combined_data.append({
+                'type': 'booking',
+                'date': b.checkin_date.strftime('%Y-%m-%d'),
+                'unit_name': b.unit_name,
+                'checkin': b.checkin_date.strftime('%Y-%m-%d'),
+                'checkout': b.checkout_date.strftime('%Y-%m-%d'),
+                'channel': b.channel,
+                'on_offline': b.on_offline,
+                'booking_number': b.booking_number,
+                'pax': b.pax,
+                'duration': b.duration,
+                'price': b.price,
+                'cleaning_fee': b.cleaning_fee,
+                'platform_charge': b.platform_charge,
+                'total_booking_revenue': b.total_revenue,
+                'additional_expense_category': None,
+                'additional_expense_amount': None,
+                'expense_id': None
+            })
+        
+        for e in expenses:
+            combined_data.append({
+                'type': 'expense',
+                'date': e.date.strftime('%Y-%m-%d'),
+                'unit_name': e.unit_name,
+                'checkin': None, 'checkout': None, 'channel': None, 'on_offline': None,
+                'booking_number': None, 'pax': None, 'duration': None, 'price': None,
+                'cleaning_fee': None, 'platform_charge': None, 'total_booking_revenue': None,
+                'additional_expense_category': e.particulars,
+                'additional_expense_amount': e.debit,
+                'expense_id': e.id
+            })
+            
+        # Sort by date
+        combined_data.sort(key=lambda x: x['date'])
+
+        return jsonify({'data': combined_data})
 
     @app.route('/download_monthly_statement')
     @login_required
