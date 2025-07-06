@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import calendar
-from sqlalchemy import extract, func, and_
+from sqlalchemy import extract, func, and_, or_
 import math
 
 main = Blueprint('main', __name__)
@@ -21,22 +21,33 @@ def clean_nan(value, default=0):
     return value
 
 def get_filtered_data(year, month=None, room_type=None):
+    # --- BOOKINGS ---
     bookings_query = Booking.query
-    expenses_query = Expense.query
-
     if year:
         bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
-        expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
-
     if month:
         bookings_query = bookings_query.filter(extract('month', Booking.checkin) == month)
-        expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
-
     if room_type and room_type != 'All':
         bookings_query = bookings_query.filter(Booking.unit_name == room_type)
-        expenses_query = expenses_query.filter(Expense.unit_name == room_type)
 
+    # --- EXPENSES ---
+    expenses_query = Expense.query
+    if year:
+        expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
+    if month:
+        expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
+    
+    # FINAL FIX: When a room is selected, also include general expenses (where unit_name is NULL)
+    if room_type and room_type != 'All':
+        expenses_query = expenses_query.filter(
+            or_(
+                Expense.unit_name == room_type,
+                Expense.unit_name == None
+            )
+        )
+    
     return bookings_query.all(), expenses_query.all()
+
 
 def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_booking_revenue = sum(clean_nan(b.total) for b in bookings)
