@@ -10,7 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div id="loadingOverlay" class="loading-overlay">
+    <div id="loadingOverlay" class="loading-overlay show">
         <div class="spinner-border" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
@@ -219,7 +219,7 @@
                                 <th>入住日期</th>
                                 <th>退房日期</th>
                                 <th>渠道</th>
-                                <th>在线/离线</th>
+                                <th>在��/离线</th>
                                 <th>人数</th>
                                 <th>天数</th>
                                 <th>价格</th>
@@ -246,14 +246,18 @@
         let monthlyChart;
         const loadingOverlay = document.getElementById('loadingOverlay');
 
+        function hideLoading() {
+            loadingOverlay.classList.remove('show');
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             Chart.register(ChartDataLabels);
-            applyFilters();
+            applyFilters().finally(hideLoading); // Hide loading after initial filters are applied
         });
 
-        window.addEventListener('load', function() {
-            loadingOverlay.classList.remove('show');
-        });
+        // Fallback to hide loading overlay on window load event
+        window.addEventListener('load', hideLoading);
+
 
         async function applyFilters() {
             loadingOverlay.classList.add('show');
@@ -284,9 +288,7 @@
                 console.error('Error applying filters:', error);
                 alert('加载数据失败。请检查后端服务器日志或尝试刷新页面。');
             } finally {
-                setTimeout(() => {
-                    loadingOverlay.classList.remove('show');
-                }, 300);
+                // The loading overlay is now hidden by the .finally() in the DOMContentLoaded event
             }
         }
 
@@ -389,11 +391,11 @@
                     console.error('Error fetching detailed data:', error);
                     alert('加载详细数据失败。');
                 } finally {
-                    setTimeout(() => { loadingOverlay.classList.remove('show'); }, 300);
+                    hideLoading();
                 }
             } else {
                 detailedRecordsSection.style.display = 'none';
-                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
+                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据��</td></tr>';
                 toggleButton.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
             }
         }
