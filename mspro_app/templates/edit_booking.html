@@ -9,17 +9,13 @@
 </head>
 <body class="bg-light">
     <div class="container-fluid">
-        <!-- 导航栏 -->
         <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 rounded-3 shadow-sm">
             <div class="container">
-                <a class="navbar-brand" href="{{ url_for('index') }}"><i class="fas fa-home me-2"></i>民宿财务概览</a>
+                <a class="navbar-brand" href="{{ url_for('main.index') }}"><i class="fas fa-home me-2"></i>民宿财务概览</a>
                 <div class="collapse navbar-collapse">
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item"><span class="nav-link">欢迎, {{ current_user.id }}!</span></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('reports') }}"><i class="fas fa-chart-bar me-1"></i>报表中心</a></li>
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('calendar_view') }}"><i class="fas fa-calendar-alt me-1"></i>预订日历</a></li>
-                        {% if current_user.role == 'admin' %}<li class="nav-item"><a class="nav-link" href="{{ url_for('admin_panel') }}"><i class="fas fa-user-cog me-1"></i>后台管理</a></li>{% endif %}
-                        <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt me-1"></i>退出</a></li>
+                        <li class="nav-item"><a class="nav-link" href="{{ url_for('main.logout') }}"><i class="fas fa-sign-out-alt me-1"></i>退出</a></li>
                     </ul>
                 </div>
             </div>
@@ -33,56 +29,53 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}{% endwith %}
 
                 <form method="POST">
-                    <input type="hidden" name="next" value="{{ request.args.get('next') or url_for('index') }}">
-                    <!-- 使用对象属性 (点 + 小写) 来访问数据 -->
+                    {{ form.hidden_tag() }}
                     <div class="mb-3">
-                        <label for="unit_name" class="form-label">房型</label>
-                        <select class="form-select" id="unit_name" name="unit_name" required>
-                            {% for unit in all_units %}<option value="{{ unit }}" {% if booking.unit_name == unit %}selected{% endif %}>{{ unit }}</option>{% endfor %}
-                        </select>
+                        {{ form.unit_name.label(class="form-label") }}
+                        {{ form.unit_name(class="form-select") }}
                     </div>
                     <div class="mb-3">
-                        <label for="checkin" class="form-label">入住日期</label>
-                        <input type="date" class="form-control" id="checkin" name="checkin" value="{{ booking.checkin.strftime('%Y-%m-%d') }}" required>
+                        {{ form.checkin.label(class="form-label") }}
+                        {{ form.checkin(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="checkout" class="form-label">退房日期</label>
-                        <input type="date" class="form-control" id="checkout" name="checkout" value="{{ booking.checkout.strftime('%Y-%m-%d') }}" required>
+                        {{ form.checkout.label(class="form-label") }}
+                        {{ form.checkout(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="channel" class="form-label">渠道</label>
-                        <input type="text" class="form-control" id="channel" name="channel" value="{{ booking.channel | default('') }}">
+                        {{ form.channel.label(class="form-label") }}
+                        {{ form.channel(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="on_offline" class="form-label">在线/离线</label>
-                        <input type="text" class="form-control" id="on_offline" name="on_offline" value="{{ booking.on_offline | default('') }}">
+                        {{ form.on_offline.label(class="form-label") }}
+                        {{ form.on_offline(class="form-select") }}
                     </div>
                     <div class="mb-3">
-                        <label for="pax" class="form-label">人数</label>
-                        <input type="number" class="form-control" id="pax" name="pax" value="{{ booking.pax }}" required>
+                        {{ form.pax.label(class="form-label") }}
+                        {{ form.pax(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="duration" class="form-label">天数</label>
-                        <input type="number" class="form-control" id="duration" name="duration" value="{{ booking.duration }}" required>
+                        {{ form.duration.label(class="form-label") }}
+                        {{ form.duration(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="price" class="form-label">价格</label>
-                        <input type="number" step="0.01" class="form-control" id="price" name="price" value="{{ '%.2f' | format(booking.price) }}" required>
+                        {{ form.price.label(class="form-label") }}
+                        {{ form.price(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="cleaning_fee" class="form-label">打扫费</label>
-                        <input type="number" step="0.01" class="form-control" id="cleaning_fee" name="cleaning_fee" value="{{ '%.2f' | format(booking.cleaning_fee) }}" required>
+                        {{ form.cleaning_fee.label(class="form-label") }}
+                        {{ form.cleaning_fee(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="platform_charge" class="form-label">平台费</label>
-                        <input type="number" step="0.01" class="form-control" id="platform_charge" name="platform_charge" value="{{ '%.2f' | format(booking.platform_charge) }}" required>
+                        {{ form.platform_charge.label(class="form-label") }}
+                        {{ form.platform_charge(class="form-control") }}
                     </div>
                     <div class="mb-3">
-                        <label for="total" class="form-label">总收入</label>
-                        <input type="number" step="0.01" class="form-control" id="total" name="total" value="{{ '%.2f' | format(booking.total) }}" required>
+                        {{ form.total.label(class="form-label") }}
+                        {{ form.total(class="form-control") }}
                     </div>
-                    <button type="submit" class="btn btn-primary">保存更改</button>
-                    <a href="{{ request.args.get('next') or url_for('index') }}" class="btn btn-secondary">取消</a>
+                    {{ form.submit(class="btn btn-primary") }}
+                    <a href="{{ request.args.get('next') or url_for('main.index') }}" class="btn btn-secondary">取消</a>
                 </form>
             </div>
         </section>
