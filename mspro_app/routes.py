@@ -8,10 +8,15 @@ import numpy as np
 from datetime import datetime, timedelta
 import calendar
 from sqlalchemy import extract, func, and_
+import math
 
 main = Blueprint('main', __name__)
 
 # --- HELPER FUNCTIONS ---
+
+def clean_nan(value):
+    """Converts NaN to None (null in JSON), otherwise returns value."""
+    return None if (value is None or (isinstance(value, float) and math.isnan(value))) else value
 
 def get_filtered_data(year, month=None, room_type=None):
     bookings_query = Booking.query
@@ -68,12 +73,13 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
         
         total_annual_revenue = sum(b.total for b in all_bookings_this_year if b.total)
         total_annual_expenses = sum(e.debit for e in all_expenses_this_year if e.debit)
+        total_annual_nights = sum(b.duration for b in all_bookings_this_year if b.duration)
 
         analysis = {
             'total_bookings_count': len(all_bookings_this_year),
             'average_duration': np.mean([b.duration for b in all_bookings_this_year if b.duration]) if all_bookings_this_year else 0,
-            'average_daily_rate': (total_annual_revenue / sum(b.duration for b in all_bookings_this_year if b.duration)) if sum(b.duration for b in all_bookings_this_year if b.duration) > 0 else 0,
-            'revpar': total_annual_revenue / (room_count * 365),
+            'average_daily_rate': (total_annual_revenue / total_annual_nights) if total_annual_nights > 0 else 0,
+            'revpar': total_annual_revenue / (room_count * 365) if room_count > 0 else 0,
             'average_monthly_revenue': total_annual_revenue / 12,
             'average_monthly_expenses': total_annual_expenses / 12,
         }
@@ -156,7 +162,11 @@ def api_filter_data():
     bookings, expenses = get_filtered_data(year, month, room_type)
     summary, analysis = calculate_dashboard_data(bookings, expenses, year, month, room_type)
     
-    return jsonify({'summary': summary, 'analysis': analysis})
+    # Clean NaN values before returning JSON
+    cleaned_summary = {k: clean_nan(v) for k, v in summary.items()}
+    cleaned_analysis = {k: clean_nan(v) for k, v in analysis.items()}
+
+    return jsonify({'summary': cleaned_summary, 'analysis': cleaned_analysis})
 
 @main.route('/api/chart_data', methods=['GET'])
 @login_required
@@ -175,8 +185,8 @@ def api_chart_data():
 
     return jsonify({
         'months': months,
-        'monthly_revenue': monthly_revenue,
-        'monthly_expenses': monthly_expenses
+        'monthly_revenue': [clean_nan(v) for v in monthly_revenue],
+        'monthly_expenses': [clean_nan(v) for v in monthly_expenses]
     })
 
 @main.route('/api/detailed_data', methods=['GET'])
@@ -195,8 +205,9 @@ def api_detailed_data():
             'type': 'booking', 'date': b.checkin.strftime('%Y-%m-%d'), 'unit_name': b.unit_name,
             'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
             'channel': b.channel, 'on_offline': b.on_offline, 'pax': b.pax, 'duration': b.duration,
-            'price': b.price, 'cleaning_fee': b.cleaning_fee, 'platform_charge': b.platform_charge,
-            'total_booking_revenue': b.total, 'booking_number': b.booking_number, 'expense_id': None,
+            'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
+            'platform_charge': clean_nan(b.platform_charge), 'total_booking_revenue': clean_nan(b.total), 
+            'booking_number': b.booking_number, 'expense_id': None,
             'additional_expense_category': None, 'additional_expense_amount': None
         })
     for e in expenses:
@@ -205,7 +216,7 @@ def api_detailed_data():
             'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
             'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
             'booking_number': None, 'expense_id': e.id,
-            'additional_expense_category': e.particulars, 'additional_expense_amount': e.debit
+            'additional_expense_category': e.particulars, 'additional_expense_amount': clean_nan(e.debit)
         })
     
     data.sort(key=lambda x: x['date'])
