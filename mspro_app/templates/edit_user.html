@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>编辑用户权限 - {{ username }}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container my-5">
+        <div class="card shadow-lg">
+            <div class="card-body p-4">
+                <h1 class="card-title text-center mb-4 text-success">编辑用户权限: <strong>{{ username }}</strong></h1>
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        <ul class="list-unstyled">
+                            {% for category, message in messages %}
+                                <li class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+
+                <form method="POST" class="mb-4">
+                    <h3 class="h5 mb-3 text-secondary">选择允许访问的房源:</h3>
+                    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+                        {% for unit in all_units %}
+                        <div class="col">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="{{ unit }}" name="allowed_units" value="{{ unit }}"
+                                       {% if unit in user_data.allowed_units %}checked{% endif %}>
+                                <label class="form-check-label" for="{{ unit }}">
+                                    {{ unit }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i> 保存更改
+                    </button>
+                </form>
+
+                <hr class="my-4">
+
+                <form method="POST" action="{{ url_for('reset_password', username=username) }}">
+                    <h3 class="h5 mb-3 text-secondary">重置密码:</h3>
+                    <div class="mb-3">
+                        <label for="new_password" class="form-label">新密码</label>
+                        <input type="password" class="form-control" id="new_password" name="new_password" required>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-redo me-2"></i> 重置密码
+                    </button>
+                </form>
+
+                <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary mt-4">
+                    <i class="fas fa-arrow-left me-2"></i> 返回管理面板
+                </a>
+            </div>
+        </div>
+    </div>
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

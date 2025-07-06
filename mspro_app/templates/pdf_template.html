@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>月结单</title>
+    <style>
+        body { font-family: 'SimSun', sans-serif; line-height: 1.6; color: #333; }
+        .container { width: 90%; margin: 0 auto; }
+        h1, h2 { text-align: center; color: #28a745; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10px; }
+        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .summary-table td:first-child { font-weight: bold; width: 30%; }
+        .footer { text-align: center; margin-top: 30px; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>{{ year }}年{{ month }}月 财务月结单</h1>
+        <h2>房型: {{ room_type }}</h2>
+
+        <h3>财务总览</h3>
+        <table class="summary-table">
+            <tr><td>预订总收入</td><td>{{ '%.2f' | format(summary.total_booking_revenue) }} MYR</td></tr>
+            <tr><td>月度总支出</td><td>{{ '%.2f' | format(summary.total_monthly_expenses) }} MYR</td></tr>
+            <tr><td>毛利</td><td>{{ '%.2f' | format(summary.gross_profit) }} MYR</td></tr>
+            <tr><td>管理费 (30%)</td><td>{{ '%.2f' | format(summary.management_fee) }} MYR</td></tr>
+            <tr><td><strong>当月净收入</strong></td><td><strong>{{ '%.2f' | format(summary.monthly_income) }} MYR</strong></td></tr>
+            <tr><td>入住率</td><td>{{ '%.2f' | format(summary.total_occupancy_rate) }}%</td></tr>
+        </table>
+
+        <h3>预订记录</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>入住日期</th><th>退房日期</th><th>天数</th><th>渠道</th><th>价格</th><th>总计</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bookings %}
+                <tr>
+                    <td>{{ b.checkin }}</td><td>{{ b.checkout }}</td><td>{{ b.duration }}</td><td>{{ b.channel }}</td><td>{{ '%.2f' | format(b.price) }}</td><td>{{ '%.2f' | format(b.total) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6">本月无预订记录。</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h3>支出记录</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>日期</th><th>描述</th><th>金额</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e.date }}</td><td>{{ e.description }}</td><td>{{ '%.2f' | format(e.debit) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3">本月无支出记录。</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="footer">
+            <p>报告生成于: {{ "now" | strftime("%Y-%m-%d %H:%M:%S") }}</p>
+        </div>
+    </div>
+</body>
+</html>

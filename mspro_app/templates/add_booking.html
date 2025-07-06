@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>新增预订</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">新增预订</h1>
+        {% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}{% endwith %}
+        <form method="POST" action="{{ url_for('add_booking') }}">
+            <div class="mb-3">
+                <label for="unit_name" class="form-label">房型</label>
+                <!-- 使用后端传来的 all_units 列表 -->
+                <select class="form-select" id="unit_name" name="unit_name" required>
+                    {% for unit in all_units %}
+                        <option value="{{ unit }}">{{ unit }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="checkin" class="form-label">入住日期</label>
+                <input type="date" class="form-control" id="checkin" name="checkin" required>
+            </div>
+            <div class="mb-3">
+                <label for="checkout" class="form-label">退房日期</label>
+                <input type="date" class="form-control" id="checkout" name="checkout" required>
+            </div>
+            <div class="mb-3">
+                <label for="channel" class="form-label">渠道</label>
+                <input type="text" class="form-control" id="channel" name="channel" required>
+            </div>
+            <div class="mb-3">
+                <label for="on_offline" class="form-label">在线/离线</label>
+                <select class="form-select" id="on_offline" name="on_offline" required>
+                    <option value="Online">Online</option>
+                    <option value="Offline">Offline</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="pax" class="form-label">人数</label>
+                <input type="number" class="form-control" id="pax" name="pax" min="1" required>
+            </div>
+            <div class="mb-3">
+                <label for="duration" class="form-label">天数</label>
+                <input type="number" class="form-control" id="duration" name="duration" min="1" required>
+            </div>
+            <div class="mb-3">
+                <label for="price" class="form-label">价格</label>
+                <input type="number" class="form-control" id="price" name="price" step="0.01" required>
+            </div>
+            <div class="mb-3">
+                <label for="cleaning_fee" class="form-label">打扫费</label>
+                <input type="number" class="form-control" id="cleaning_fee" name="cleaning_fee" step="0.01" value="0.00" required>
+            </div>
+            <div class="mb-3">
+                <label for="platform_charge" class="form-label">平台费</label>
+                <input type="number" class="form-control" id="platform_charge" name="platform_charge" step="0.01" value="0.00" required>
+            </div>
+            <div class="mb-3">
+                <label for="total" class="form-label">总收入</label>
+                <input type="number" class="form-control" id="total" name="total" step="0.01" required>
+            </div>
+            <button type="submit" class="btn btn-primary">添加预订</button>
+            <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
