@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateField, SelectField, FloatField, IntegerField
 from wtforms.validators import DataRequired, ValidationError, Email, EqualTo
 from .models import User
 
@@ -11,7 +11,6 @@ class LoginForm(FlaskForm):
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
-    # email = StringField('Email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
     password2 = PasswordField(
         'Repeat Password', validators=[DataRequired(), EqualTo('password')])
@@ -22,7 +21,23 @@ class RegistrationForm(FlaskForm):
         if user is not None:
             raise ValidationError('Please use a different username.')
 
-    # def validate_email(self, email):
-    #     user = User.query.filter_by(email=email.data).first()
-    #     if user is not None:
-    #         raise ValidationError('Please use a different email address.')
+class BookingForm(FlaskForm):
+    unit_name = SelectField('房型', validators=[DataRequired()])
+    checkin = DateField('入住日期', validators=[DataRequired()], format='%Y-%m-%d')
+    checkout = DateField('退房日��', validators=[DataRequired()], format='%Y-%m-%d')
+    channel = StringField('渠道')
+    on_offline = SelectField('在线/离线', choices=[('Online', 'Online'), ('Offline', 'Offline')])
+    pax = IntegerField('人数', validators=[DataRequired()])
+    duration = IntegerField('天数', validators=[DataRequired()])
+    price = FloatField('价格', validators=[DataRequired()])
+    cleaning_fee = FloatField('打扫费', default=0.0)
+    platform_charge = FloatField('平台费', default=0.0)
+    total = FloatField('总收入', validators=[DataRequired()])
+    submit = SubmitField('提交')
+
+class ExpenseForm(FlaskForm):
+    date = DateField('日期', validators=[DataRequired()], format='%Y-%m-%d')
+    unit_name = SelectField('房型', validators=[DataRequired()])
+    particulars = StringField('描述', validators=[DataRequired()])
+    debit = FloatField('金额', validators=[DataRequired()])
+    submit = SubmitField('提交')

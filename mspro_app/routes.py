@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, send_file, make_
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
 from .models import User, Booking, Expense
-from .forms import LoginForm, RegistrationForm
+from .forms import LoginForm, RegistrationForm, BookingForm, ExpenseForm
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -16,13 +16,11 @@ main = Blueprint('main', __name__)
 # --- HELPER FUNCTIONS ---
 
 def clean_nan(value, default=0):
-    """Converts NaN or None to a default value (0 for numbers), otherwise returns value."""
     if value is None or (isinstance(value, (int, float)) and math.isnan(value)):
         return default
     return value
 
 def get_filtered_data(year, month=None, room_type=None):
-    # --- BOOKINGS ---
     bookings_query = Booking.query
     if year:
         bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
@@ -31,7 +29,6 @@ def get_filtered_data(year, month=None, room_type=None):
     if room_type and room_type != 'All':
         bookings_query = bookings_query.filter(Booking.unit_name == room_type)
 
-    # --- EXPENSES ---
     expenses_query = Expense.query
     if year:
         expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
@@ -39,15 +36,9 @@ def get_filtered_data(year, month=None, room_type=None):
         expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
     
     if room_type and room_type != 'All':
-        expenses_query = expenses_query.filter(
-            or_(
-                Expense.unit_name == room_type,
-                Expense.unit_name == None
-            )
-        )
+        expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name == None))
     
     return bookings_query.all(), expenses_query.all()
-
 
 def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_booking_revenue = sum(clean_nan(b.total) for b in bookings)
@@ -161,6 +152,63 @@ def index():
                            default_year=str(selected_year),
                            current_user_role=current_user.role
                            )
+
+# --- BOOKING & EXPENSE MANAGEMENT ---
+
+@main.route('/add_booking', methods=['GET', 'POST'])
+@login_required
+def add_booking():
+    form = BookingForm()
+    all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    form.unit_name.choices = all_units
+    if form.validate_on_submit():
+        new_booking = Booking(
+            unit_name=form.unit_name.data,
+            checkin=form.checkin.data,
+            checkout=form.checkout.data,
+            channel=form.channel.data,
+            on_offline=form.on_offline.data,
+            pax=form.pax.data,
+            duration=form.duration.data,
+            price=form.price.data,
+            cleaning_fee=form.cleaning_fee.data,
+            platform_charge=form.platform_charge.data,
+            total=form.total.data
+        )
+        db.session.add(new_booking)
+        db.session.commit()
+        flash('新预订已成功添加!', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('add_booking.html', title='新增预订', form=form, all_units=all_units)
+
+@main.route('/edit_booking/<booking_id>', methods=['GET', 'POST'])
+@login_required
+def edit_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    form = BookingForm(obj=booking)
+    all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    form.unit_name.choices = all_units
+    if form.validate_on_submit():
+        form.populate_obj(booking)
+        db.session.commit()
+        flash('预订信息已更新!', 'success')
+        return redirect(request.args.get('next') or url_for('main.index'))
+    return render_template('edit_booking.html', title='编辑预订', form=form, booking=booking, all_units=all_units)
+
+@main.route('/edit_expense/<expense_id>', methods=['GET', 'POST'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+    form = ExpenseForm(obj=expense)
+    all_units = ['_GENERAL_EXPENSE_'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    form.unit_name.choices = all_units
+    if form.validate_on_submit():
+        form.populate_obj(expense)
+        db.session.commit()
+        flash('支出信息已更新!', 'success')
+        return redirect(request.args.get('next') or url_for('main.index'))
+    return render_template('edit_expense.html', title='编辑支出', form=form, expense=expense, all_units=all_units)
+
 
 # --- PDF DOWNLOAD ROUTE ---
 

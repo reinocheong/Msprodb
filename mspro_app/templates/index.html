@@ -92,6 +92,13 @@
                             <i class="fas fa-download me-2"></i>下载月结单
                         </button>
                     </div>
+                    {% if current_user.role == 'admin' %}
+                    <div class="col-md-4 d-grid">
+                        <a href="{{ url_for('main.add_booking') }}" class="btn btn-success">
+                            <i class="fas fa-plus-circle me-2"></i>新增预订
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </section>
@@ -224,7 +231,7 @@
                                 <th>入住日期</th>
                                 <th>退房日期</th>
                                 <th>渠道</th>
-                                <th>在��/离线</th>
+                                <th>在线/离线</th>
                                 <th>人数</th>
                                 <th>天数</th>
                                 <th>价格</th>
@@ -232,11 +239,14 @@
                                 <th>平台费</th>
                                 <th>总收入</th>
                                 <th>额外支出类别</th>
-                                <th>额外支出金额</th>
+                                <th>额外��出金额</th>
+                                {% if current_user.role == 'admin' %}
+                                <th>操作</th>
+                                {% endif %}
                             </tr>
                         </thead>
                         <tbody id="dataRows">
-                            <tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>
+                            <tr><td colspan="17" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -282,7 +292,7 @@
                 updateSummary(result.summary);
                 updateAnalysis(result.analysis);
                 document.getElementById('detailedRecordsSection').style.display = 'none';
-                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
+                document.getElementById('dataRows').innerHTML = '<tr><td colspan="17" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
                 document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
 
                 await fetchChartData();
@@ -350,6 +360,16 @@
                 data.forEach(record => {
                     const row = document.createElement('tr');
                     let unitNameDisplay = record.unit_name === '_GENERAL_EXPENSE_' ? '通用' : record.unit_name;
+                    
+                    let editButtonHtml = '';
+                    if ("{{ current_user.role }}" === 'admin') {
+                        if (record.type === 'booking' && record.booking_number) {
+                            editButtonHtml = `<a href="/edit_booking/${record.booking_number}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>`;
+                        } else if (record.type === 'expense' && record.expense_id) {
+                            editButtonHtml = `<a href="/edit_expense/${record.expense_id}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>`;
+                        }
+                    }
+
                     row.innerHTML = `
                         <td>${record.booking_number || '-'}</td>
                         <td>${record.date}</td>
@@ -367,11 +387,12 @@
                         <td class="text-end">${(record.total_booking_revenue || 0).toFixed(2)}</td>
                         <td>${record.additional_expense_category || '-'}</td>
                         <td class="text-end">${(record.additional_expense_amount || 0).toFixed(2)}</td>
+                        ${ "{{ current_user.role }}" === 'admin' ? `<td>${editButtonHtml}</td>` : '' }
                     `;
                     dataRows.appendChild(row);
                 });
             } else {
-                dataRows.innerHTML = '<tr><td colspan="16" class="text-center text-muted">没有数据可显示。</td></tr>';
+                dataRows.innerHTML = '<tr><td colspan="17" class="text-center text-muted">没有数据���显示。</td></tr>';
             }
         }
 
@@ -399,7 +420,7 @@
                 }
             } else {
                 detailedRecordsSection.style.display = 'none';
-                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据��</td></tr>';
+                document.getElementById('dataRows').innerHTML = '<tr><td colspan="17" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
                 toggleButton.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
             }
         }
