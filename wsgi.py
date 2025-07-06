@@ -69,7 +69,7 @@ def import_data_command():
         db.session.commit()
         print(f"SUCCESS: Imported {len(bookings_to_add)} booking records.")
 
-    # --- Expense Data Processing ---
+    # --- Expense Data Processing (Robust Version) ---
     all_expense_files = glob.glob(os.path.join(DATA_FOLDER, '*expenses.xlsx'))
     expense_files = [f for f in all_expense_files if not os.path.basename(f).startswith('~$')]
 
@@ -77,26 +77,38 @@ def import_data_command():
         all_expenses_df = pd.concat((pd.read_excel(f, engine='openpyxl') for f in expense_files), ignore_index=True)
         print(f"Found and merged {len(expense_files)} expense files. Total rows: {len(all_expenses_df)}")
         
-        # Handle column name variations and priorities
-        if 'Amount' in all_expenses_df.columns:
-            all_expenses_df['DEBIT'] = all_expenses_df['Amount']
-        if 'PARTICULARS' in all_expenses_df.columns:
-            all_expenses_df['Particulars'] = all_expenses_df['PARTICULARS']
-        if 'Expenses Date' in all_expenses_df.columns:
-            all_expenses_df['Date'] = all_expenses_df['Expenses Date']
+        df = all_expenses_df.copy()
 
-        all_expenses_df.rename(columns={
+        # Coalesce (merge) columns with different names into one canonical column
+        if 'Expenses Date' in df.columns and 'Date' in df.columns:
+            df['Date'] = df['Date'].fillna(df['Expenses Date'])
+        elif 'Expenses Date' in df.columns:
+            df['Date'] = df['Expenses Date']
+
+        if 'PARTICULARS' in df.columns and 'Particulars' in df.columns:
+            df['Particulars'] = df['Particulars'].fillna(df['PARTICULARS'])
+        elif 'PARTICULARS' in df.columns:
+            df['Particulars'] = df['PARTICULARS']
+
+        if 'DEBIT' in df.columns and 'Amount' in df.columns:
+            df['Amount'] = df['Amount'].fillna(df['DEBIT'])
+        elif 'DEBIT' in df.columns:
+            df['Amount'] = df['DEBIT']
+
+        # Final rename to match database model
+        df.rename(columns={
             'Date': 'date',
             'Unit Name': 'unit_name',
             'Particulars': 'particulars',
-            'DEBIT': 'debit'
+            'Amount': 'debit'
         }, inplace=True)
         
-        all_expenses_df['date'] = pd.to_datetime(all_expenses_df['date'], errors='coerce')
-        all_expenses_df.dropna(subset=['date', 'debit'], inplace=True)
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        df['debit'] = pd.to_numeric(df['debit'], errors='coerce')
+        df.dropna(subset=['date', 'debit'], inplace=True)
 
         expense_model_columns = [c.name for c in Expense.__table__.columns if c.name != 'id']
-        final_expense_df = all_expenses_df[all_expenses_df.columns.intersection(expense_model_columns)]
+        final_expense_df = df[df.columns.intersection(expense_model_columns)]
 
         expenses_to_add = [Expense(**row) for index, row in final_expense_df.iterrows()]
         db.session.bulk_save_objects(expenses_to_add)
