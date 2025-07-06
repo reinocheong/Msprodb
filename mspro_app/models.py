@@ -1,9 +1,7 @@
-from flask_sqlalchemy import SQLAlchemy
+from .extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
-
-db = SQLAlchemy()
 
 class User(UserMixin, db.Model):
     id = db.Column(db.String(80), primary_key=True)
@@ -27,7 +25,7 @@ class Booking(db.Model):
     checkout = db.Column(db.Date)
     channel = db.Column(db.String(80))
     on_offline = db.Column(db.String(80))
-    booking_number = db.Column(db.String(100), nullable=True) # Keep this from our previous step
+    booking_number = db.Column(db.String(100), nullable=True)
     pax = db.Column(db.Integer)
     duration = db.Column(db.Integer)
     price = db.Column(db.Float)

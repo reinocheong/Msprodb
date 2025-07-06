@@ -1,43 +1,31 @@
-import os
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
-from flask_migrate import Migrate
-from dotenv import load_dotenv
-
-load_dotenv()
-
-db = SQLAlchemy()
-login_manager = LoginManager()
-migrate = Migrate()
+import os
 
 def create_app():
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__)
     
-    # --- Configuration ---
-    app.config.from_mapping(
-        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev-secret-key'),
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-    )
-    database_url = os.environ.get('DATABASE_URL')
-    if database_url and database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url or 'sqlite:///msprodata.db'
+    # Configuration
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key')
+    database_url = os.environ.get('DATABASE_URL', 'sqlite:///local_dev.db').replace("postgres://", "postgresql://", 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # --- Initialize Extensions ---
+    # Initialize extensions
+    from .extensions import db, login_manager, migrate
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
 
-    with app.app_context():
-        from . import routes
-        app.register_blueprint(routes.main)
+    # Register Blueprints
+    from .routes import main as main_blueprint
+    app.register_blueprint(main_blueprint)
 
-        from .models import User
-        @login_manager.user_loader
-        def load_user(user_id):
-            return User.query.get(user_id)
-            
-        login_manager.login_view = 'main.login'
+    # User loader
+    from .models import User
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(user_id)
+
+    login_manager.login_view = 'main.login'
 
     return app
