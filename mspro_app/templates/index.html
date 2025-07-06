@@ -23,7 +23,7 @@
     <div class="container-fluid">
         <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 rounded-3 shadow-sm">
             <div class="container">
-                <a class="navbar-brand" href="{{ url_for('index') }}">
+                <a class="navbar-brand" href="{{ url_for('main.index') }}">
                     <i class="fas fa-home me-2"></i>民宿财务概览
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,24 +35,24 @@
                             <span class="nav-link">欢迎, {{ current_user.id }}!</span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('reports') }}">
+                            <a class="nav-link" href="{{ url_for('main.reports') }}">
                                 <i class="fas fa-chart-bar me-1"></i>报表中心
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('calendar_view') }}">
+                            <a class="nav-link" href="{{ url_for('main.calendar_view') }}">
                                 <i class="fas fa-calendar-alt me-1"></i>预订日历
                             </a>
                         </li>
                         {% if current_user.role == 'admin' %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin_panel') }}">
+                            <a class="nav-link" href="{{ url_for('main.admin_panel') }}">
                                 <i class="fas fa-user-cog me-1"></i>后台管理
                             </a>
                         </li>
                         {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('logout') }}">
+                            <a class="nav-link" href="{{ url_for('main.logout') }}">
                                 <i class="fas fa-sign-out-alt me-1"></i>退出
                             </a>
                         </li>
@@ -114,7 +114,7 @@
                     </div>
                     {% if current_user.role == 'admin' %}
                     <div class="col-md-4 d-grid">
-                        <a href="{{ url_for('add_booking') }}" class="btn btn-success">
+                        <a href="{{ url_for('main.add_booking') }}" class="btn btn-success">
                             <i class="fas fa-plus-circle me-2"></i>新增预订
                         </a>
                     </div>
