@@ -2,7 +2,7 @@
 set -e
 echo "--- Running start.sh ---"
 
-export FLASK_APP=wsgi:app
+export FLASK_APP=wsgi.py
 
 echo "Step 1: Running database migrations..."
 flask db upgrade
