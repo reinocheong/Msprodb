@@ -3,8 +3,12 @@ FROM python:3.9-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies required for pdfkit
-RUN apt-get update && apt-get install -y wkhtmltopdf && apt-get clean
+# Install system dependencies
+# - wkhtmltopdf: for PDF generation
+# - fonts-noto-cjk: for Chinese font support in PDFs
+RUN apt-get update && \
+    apt-get install -y wkhtmltopdf fonts-noto-cjk && \
+    apt-get clean
 
 # Copy the requirements file and install Python dependencies
 COPY requirements.txt .
@@ -18,3 +22,4 @@ RUN chmod +x ./start.sh
 
 # Command to run the application
 CMD ["./start.sh"]
+
