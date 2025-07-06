@@ -2,7 +2,7 @@ from flask import Flask
 import os
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='../static', template_folder='templates')
     
     # Configuration
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key')
