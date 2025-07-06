@@ -34,22 +34,22 @@
                         <li class="nav-item">
                             <span class="nav-link">欢迎, {{ current_user.id }}!</span>
                         </li>
-                        <li class="nav-item">
+                        {# <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.reports') }}">
                                 <i class="fas fa-chart-bar me-1"></i>报表中心
                             </a>
-                        </li>
-                        <li class="nav-item">
+                        </li> #}
+                        {# <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.calendar_view') }}">
                                 <i class="fas fa-calendar-alt me-1"></i>预订日历
                             </a>
-                        </li>
+                        </li> #}
                         {% if current_user.role == 'admin' %}
-                        <li class="nav-item">
+                        {# <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.admin_panel') }}">
                                 <i class="fas fa-user-cog me-1"></i>后台管理
                             </a>
-                        </li>
+                        </li> #}
                         {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.logout') }}">
