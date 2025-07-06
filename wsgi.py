@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import glob
 import uuid
+import math
 
 app = create_app()
 
@@ -30,13 +31,8 @@ def import_data_command():
     all_booking_files = glob.glob(os.path.join(DATA_FOLDER, '*Booking.xlsx'))
     booking_files = [f for f in all_booking_files if not os.path.basename(f).startswith('~$')]
     
-    if not booking_files:
-        print("WARNING: No valid Booking excel files found.")
-    else:
-        all_bookings_df = pd.concat(
-            (pd.read_excel(f, engine='openpyxl') for f in booking_files), 
-            ignore_index=True
-        )
+    if booking_files:
+        all_bookings_df = pd.concat((pd.read_excel(f, engine='openpyxl') for f in booking_files), ignore_index=True)
         print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(all_bookings_df)}")
         
         all_bookings_df.rename(columns={
@@ -50,7 +46,6 @@ def import_data_command():
         all_bookings_df['checkout'] = pd.to_datetime(all_bookings_df['checkout'], errors='coerce')
         all_bookings_df.dropna(subset=['checkin', 'checkout'], inplace=True)
 
-        # --- Data Validation and Cleaning ---
         all_bookings_df['pax'] = pd.to_numeric(all_bookings_df['pax'], errors='coerce')
         all_bookings_df['duration'] = pd.to_numeric(all_bookings_df['duration'], errors='coerce')
 
@@ -60,11 +55,7 @@ def import_data_command():
         problematic_rows = all_bookings_df[pax_problems | duration_problems]
 
         if not problematic_rows.empty:
-            print("\n--- WARNING: Found Data Quality Issues ---")
-            print("The following rows contain 'pax' or 'duration' values that are too large for the database:")
-            print(problematic_rows[['unit_name', 'checkin', 'pax', 'duration']])
             all_bookings_df = all_bookings_df[~(pax_problems | duration_problems)]
-            print(f"\nFiltered out {len(problematic_rows)} problematic rows. Continuing with {len(all_bookings_df)} valid rows.")
 
         all_bookings_df.dropna(subset=['pax', 'duration'], inplace=True)
         all_bookings_df['pax'] = all_bookings_df['pax'].astype(int)
@@ -82,21 +73,27 @@ def import_data_command():
     all_expense_files = glob.glob(os.path.join(DATA_FOLDER, '*expenses.xlsx'))
     expense_files = [f for f in all_expense_files if not os.path.basename(f).startswith('~$')]
 
-    if not expense_files:
-        print("WARNING: No valid expense excel files found.")
-    else:
-        all_expenses_df = pd.concat(
-            (pd.read_excel(f, engine='openpyxl') for f in expense_files), 
-            ignore_index=True
-        )
+    if expense_files:
+        all_expenses_df = pd.concat((pd.read_excel(f, engine='openpyxl') for f in expense_files), ignore_index=True)
         print(f"Found and merged {len(expense_files)} expense files. Total rows: {len(all_expenses_df)}")
         
+        # Handle column name variations and priorities
+        if 'Amount' in all_expenses_df.columns:
+            all_expenses_df['DEBIT'] = all_expenses_df['Amount']
+        if 'PARTICULARS' in all_expenses_df.columns:
+            all_expenses_df['Particulars'] = all_expenses_df['PARTICULARS']
+        if 'Expenses Date' in all_expenses_df.columns:
+            all_expenses_df['Date'] = all_expenses_df['Expenses Date']
+
         all_expenses_df.rename(columns={
-            'Date': 'date', 'Unit Name': 'unit_name', 'Particulars': 'particulars', 'Debit': 'debit'
+            'Date': 'date',
+            'Unit Name': 'unit_name',
+            'Particulars': 'particulars',
+            'DEBIT': 'debit'
         }, inplace=True)
         
         all_expenses_df['date'] = pd.to_datetime(all_expenses_df['date'], errors='coerce')
-        all_expenses_df.dropna(subset=['date'], inplace=True)
+        all_expenses_df.dropna(subset=['date', 'debit'], inplace=True)
 
         expense_model_columns = [c.name for c in Expense.__table__.columns if c.name != 'id']
         final_expense_df = all_expenses_df[all_expenses_df.columns.intersection(expense_model_columns)]
