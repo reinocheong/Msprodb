@@ -14,9 +14,11 @@ main = Blueprint('main', __name__)
 
 # --- HELPER FUNCTIONS ---
 
-def clean_nan(value):
-    """Converts NaN to None (null in JSON), otherwise returns value."""
-    return None if (value is None or (isinstance(value, float) and math.isnan(value))) else value
+def clean_nan(value, default=0):
+    """Converts NaN or None to a default value (0 for numbers), otherwise returns value."""
+    if value is None or (isinstance(value, (int, float)) and math.isnan(value)):
+        return default
+    return value
 
 def get_filtered_data(year, month=None, room_type=None):
     bookings_query = Booking.query
@@ -37,8 +39,8 @@ def get_filtered_data(year, month=None, room_type=None):
     return bookings_query.all(), expenses_query.all()
 
 def calculate_dashboard_data(bookings, expenses, year, month, room_type):
-    total_booking_revenue = sum(b.total for b in bookings if b.total)
-    total_monthly_expenses = sum(e.debit for e in expenses if e.debit)
+    total_booking_revenue = sum(clean_nan(b.total) for b in bookings)
+    total_monthly_expenses = sum(clean_nan(e.debit) for e in expenses)
     gross_profit = total_booking_revenue - total_monthly_expenses
     management_fee = gross_profit * 0.30
     monthly_income = gross_profit - management_fee
@@ -54,7 +56,7 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     else:
         total_possible_nights = room_count * 365
 
-    total_nights_booked = sum(b.duration for b in bookings if b.duration)
+    total_nights_booked = sum(clean_nan(b.duration, default=0) for b in bookings)
     total_occupancy_rate = (total_nights_booked / total_possible_nights) * 100 if total_possible_nights > 0 else 0
     
     summary = {
@@ -71,13 +73,13 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
         all_bookings_this_year = Booking.query.filter(extract('year', Booking.checkin) == year).all()
         all_expenses_this_year = Expense.query.filter(extract('year', Expense.date) == year).all()
         
-        total_annual_revenue = sum(b.total for b in all_bookings_this_year if b.total)
-        total_annual_expenses = sum(e.debit for e in all_expenses_this_year if e.debit)
-        total_annual_nights = sum(b.duration for b in all_bookings_this_year if b.duration)
+        total_annual_revenue = sum(clean_nan(b.total) for b in all_bookings_this_year)
+        total_annual_expenses = sum(clean_nan(e.debit) for e in all_expenses_this_year)
+        total_annual_nights = sum(clean_nan(b.duration, default=0) for b in all_bookings_this_year)
 
         analysis = {
             'total_bookings_count': len(all_bookings_this_year),
-            'average_duration': np.mean([b.duration for b in all_bookings_this_year if b.duration]) if all_bookings_this_year else 0,
+            'average_duration': np.mean([clean_nan(b.duration, 0) for b in all_bookings_this_year]) if all_bookings_this_year else 0,
             'average_daily_rate': (total_annual_revenue / total_annual_nights) if total_annual_nights > 0 else 0,
             'revpar': total_annual_revenue / (room_count * 365) if room_count > 0 else 0,
             'average_monthly_revenue': total_annual_revenue / 12,
@@ -162,7 +164,6 @@ def api_filter_data():
     bookings, expenses = get_filtered_data(year, month, room_type)
     summary, analysis = calculate_dashboard_data(bookings, expenses, year, month, room_type)
     
-    # Clean NaN values before returning JSON
     cleaned_summary = {k: clean_nan(v) for k, v in summary.items()}
     cleaned_analysis = {k: clean_nan(v) for k, v in analysis.items()}
 
@@ -180,13 +181,13 @@ def api_chart_data():
 
     for month in range(1, 13):
         bookings, expenses = get_filtered_data(year, month, room_type)
-        monthly_revenue.append(sum(b.total for b in bookings if b.total))
-        monthly_expenses.append(sum(e.debit for e in expenses if e.debit))
+        monthly_revenue.append(sum(clean_nan(b.total) for b in bookings))
+        monthly_expenses.append(sum(clean_nan(e.debit) for e in expenses))
 
     return jsonify({
         'months': months,
-        'monthly_revenue': [clean_nan(v) for v in monthly_revenue],
-        'monthly_expenses': [clean_nan(v) for v in monthly_expenses]
+        'monthly_revenue': monthly_revenue,
+        'monthly_expenses': monthly_expenses
     })
 
 @main.route('/api/detailed_data', methods=['GET'])
@@ -208,7 +209,7 @@ def api_detailed_data():
             'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
             'platform_charge': clean_nan(b.platform_charge), 'total_booking_revenue': clean_nan(b.total), 
             'booking_number': b.booking_number, 'expense_id': None,
-            'additional_expense_category': None, 'additional_expense_amount': None
+            'additional_expense_category': None, 'additional_expense_amount': 0
         })
     for e in expenses:
         data.append({

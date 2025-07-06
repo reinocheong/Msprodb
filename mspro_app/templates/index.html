@@ -291,26 +291,26 @@
         }
 
         function updateSummary(summary) {
-            document.getElementById('totalBookingRevenue').innerText = summary.total_booking_revenue.toFixed(2);
-            document.getElementById('totalMonthlyExpenses').innerText = summary.total_monthly_expenses.toFixed(2);
-            document.getElementById('grossProfit').innerText = summary.gross_profit.toFixed(2);
-            document.getElementById('managementFee').innerText = summary.management_fee.toFixed(2);
-            document.getElementById('monthlyIncome').innerText = summary.monthly_income.toFixed(2);
-            document.getElementById('totalOccupancyRate').innerText = summary.total_occupancy_rate.toFixed(2) + '%';
+            document.getElementById('totalBookingRevenue').innerText = (summary.total_booking_revenue || 0).toFixed(2);
+            document.getElementById('totalMonthlyExpenses').innerText = (summary.total_monthly_expenses || 0).toFixed(2);
+            document.getElementById('grossProfit').innerText = (summary.gross_profit || 0).toFixed(2);
+            document.getElementById('managementFee').innerText = (summary.management_fee || 0).toFixed(2);
+            document.getElementById('monthlyIncome').innerText = (summary.monthly_income || 0).toFixed(2);
+            document.getElementById('totalOccupancyRate').innerText = (summary.total_occupancy_rate || 0).toFixed(2) + '%';
         }
 
         function updateAnalysis(analysis) {
             const month = document.getElementById('monthSelect').value;
             const analysisSection = document.getElementById('annualAnalysisSection');
 
-            if (month === '') {
+            if (month === '' && analysis) {
                 analysisSection.style.display = 'block';
-                document.getElementById('totalBookingsCount').innerText = analysis.total_bookings_count;
-                document.getElementById('averageDuration').innerText = analysis.average_duration.toFixed(2);
-                document.getElementById('averageDailyRate').innerText = analysis.average_daily_rate.toFixed(2);
-                document.getElementById('revpar').innerText = analysis.revpar.toFixed(2);
-                document.getElementById('averageMonthlyRevenue').innerText = analysis.average_monthly_revenue.toFixed(2);
-                document.getElementById('averageMonthlyExpenses').innerText = analysis.average_monthly_expenses.toFixed(2);
+                document.getElementById('totalBookingsCount').innerText = analysis.total_bookings_count || 0;
+                document.getElementById('averageDuration').innerText = (analysis.average_duration || 0).toFixed(2);
+                document.getElementById('averageDailyRate').innerText = (analysis.average_daily_rate || 0).toFixed(2);
+                document.getElementById('revpar').innerText = (analysis.revpar || 0).toFixed(2);
+                document.getElementById('averageMonthlyRevenue').innerText = (analysis.average_monthly_revenue || 0).toFixed(2);
+                document.getElementById('averageMonthlyExpenses').innerText = (analysis.average_monthly_expenses || 0).toFixed(2);
             } else {
                 analysisSection.style.display = 'none';
             }
@@ -345,22 +345,22 @@
                     const row = document.createElement('tr');
                     let unitNameDisplay = record.unit_name === '_GENERAL_EXPENSE_' ? '通用' : record.unit_name;
                     row.innerHTML = `
-                        <td>${record.type === 'booking' ? record.booking_number : '-'}</td>
+                        <td>${record.booking_number || '-'}</td>
                         <td>${record.date}</td>
                         <td><span class="badge ${record.type === 'booking' ? 'bg-success' : 'bg-danger'}">${record.type === 'booking' ? '预订' : '支出'}</span></td>
                         <td>${unitNameDisplay}</td>
-                        <td>${record.type === 'booking' ? record.checkin : '-'}</td>
-                        <td>${record.type === 'booking' ? record.checkout : '-'}</td>
-                        <td>${record.type === 'booking' ? record.channel : '-'}</td>
-                        <td>${record.type === 'booking' ? record.on_offline : '-'}</td>
-                        <td class="text-center">${record.type === 'booking' ? record.pax : '-'}</td>
-                        <td class="text-center">${record.type === 'booking' ? record.duration : '-'}</td>
-                        <td class="text-end">${record.type === 'booking' ? record.price.toFixed(2) : '-'}</td>
-                        <td class="text-end">${record.type === 'booking' ? record.cleaning_fee.toFixed(2) : '-'}</td>
-                        <td class="text-end">${record.type === 'booking' ? record.platform_charge.toFixed(2) : '-'}</td>
-                        <td class="text-end">${record.type === 'booking' ? record.total_booking_revenue.toFixed(2) : '-'}</td>
-                        <td>${record.type === 'expense' ? record.additional_expense_category : '-'}</td>
-                        <td class="text-end">${record.type === 'expense' ? record.additional_expense_amount.toFixed(2) : '-'}</td>
+                        <td>${record.checkin || '-'}</td>
+                        <td>${record.checkout || '-'}</td>
+                        <td>${record.channel || '-'}</td>
+                        <td>${record.on_offline || '-'}</td>
+                        <td class="text-center">${record.pax || '-'}</td>
+                        <td class="text-center">${record.duration || '-'}</td>
+                        <td class="text-end">${(record.price || 0).toFixed(2)}</td>
+                        <td class="text-end">${(record.cleaning_fee || 0).toFixed(2)}</td>
+                        <td class="text-end">${(record.platform_charge || 0).toFixed(2)}</td>
+                        <td class="text-end">${(record.total_booking_revenue || 0).toFixed(2)}</td>
+                        <td>${record.additional_expense_category || '-'}</td>
+                        <td class="text-end">${(record.additional_expense_amount || 0).toFixed(2)}</td>
                     `;
                     dataRows.appendChild(row);
                 });
