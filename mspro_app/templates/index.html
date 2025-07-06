@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>民宿财务概览</title>
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 </head>
@@ -17,7 +14,7 @@
         <div class="spinner-border" role="status">
             <span class="visually-hidden">Loading...</span>
         </div>
-        <div class="loading-text">���载中...</div>
+        <div class="loading-text">加载中...</div>
     </div>
 
     <div class="container-fluid">
@@ -34,23 +31,6 @@
                         <li class="nav-item">
                             <span class="nav-link">欢迎, {{ current_user.id }}!</span>
                         </li>
-                        {# <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.reports') }}">
-                                <i class="fas fa-chart-bar me-1"></i>报表中心
-                            </a>
-                        </li> #}
-                        {# <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.calendar_view') }}">
-                                <i class="fas fa-calendar-alt me-1"></i>预订日历
-                            </a>
-                        </li> #}
-                        {% if current_user.role == 'admin' %}
-                        {# <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('main.admin_panel') }}">
-                                <i class="fas fa-user-cog me-1"></i>后台管理
-                            </a>
-                        </li> #}
-                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{{ url_for('main.logout') }}">
                                 <i class="fas fa-sign-out-alt me-1"></i>退出
@@ -107,18 +87,6 @@
                             <i class="fas fa-eye me-2"></i>查看详细
                         </button>
                     </div>
-                    <div class="col-md-4 d-grid">
-                        <button onclick="downloadMonthlyStatement()" class="btn btn-outline-info">
-                            <i class="fas fa-download me-2"></i>下载月结单
-                        </button>
-                    </div>
-                    {% if current_user.role == 'admin' %}
-                    <div class="col-md-4 d-grid">
-                        {# <a href="{{ url_for('main.add_booking') }}" class="btn btn-success">
-                            <i class="fas fa-plus-circle me-2"></i>新增预订
-                        </a> #}
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </section>
@@ -174,7 +142,6 @@
             </div>
         </section>
 
-        <!-- 新增的年度数据分析模块 -->
         <section id="annualAnalysisSection" class="card shadow-sm mb-5 p-4 bg-light-subtle" style="display: none;">
             <div class="card-body">
                 <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-chart-pie me-2"></i>年度数据分析</h2>
@@ -261,9 +228,6 @@
                                 <th>总收入</th>
                                 <th>额外支出类别</th>
                                 <th>额外支出金额</th>
-                                {% if current_user.role == 'admin' %}
-                                <th>操作</th>
-                                {% endif %}
                             </tr>
                         </thead>
                         <tbody id="dataRows">
@@ -275,66 +239,53 @@
         </section>
     </div>
 
-    <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
     <script>
-        let monthlyChart; // Global chart instance
+        let monthlyChart;
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const current_user_role = "{{ current_user_role }}";
-        const editBookingUrl = "{{ edit_booking_url_pattern }}";
 
         document.addEventListener('DOMContentLoaded', function() {
-            // Register Chart.js DataLabels plugin
             Chart.register(ChartDataLabels);
-            
-            fetchChartData();
-            updateCardBorderColors();
-
-            // 添加事件监听器来切换详细记录的显示
-            document.getElementById('toggleDetailedRecordsButton').addEventListener('click', toggleDetailedRecords);
+            applyFilters();
         });
 
-        // 确保在所有内容加载完毕后隐藏加载指示器
         window.addEventListener('load', function() {
             loadingOverlay.classList.remove('show');
         });
 
         async function applyFilters() {
-            loadingOverlay.classList.add('show'); // 显示加载指示器
+            loadingOverlay.classList.add('show');
 
             const year = document.getElementById('yearSelect').value;
             const month = document.getElementById('monthSelect').value;
             const roomType = document.getElementById('roomTypeSelect').value;
 
-            const queryParams = new URLSearchParams({
-                year: year,
-                month: month,
-                room_type: roomType
-            }).toString();
+            const queryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
 
             try {
                 const response = await fetch(`/api/filter_data?${queryParams}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const result = await response.json();
 
                 updateSummary(result.summary);
-                updateAnalysis(result.analysis); // 更新年度分析数据
-                // 筛选器应用时，隐藏详细记录并重置其内容
+                updateAnalysis(result.analysis);
                 document.getElementById('detailedRecordsSection').style.display = 'none';
                 document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
                 document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
 
-                await fetchChartData(); // Re-fetch chart data with new filters
-                updateCardBorderColors(); // 更新卡片边框颜色
+                await fetchChartData();
+                updateCardBorderColors();
 
             } catch (error) {
                 console.error('Error applying filters:', error);
                 alert('加载数据失败。请检查后端服务器日志或尝试刷新页面。');
             } finally {
-                // Short delay to allow animation to show for very fast loads
                 setTimeout(() => {
-                    loadingOverlay.classList.remove('show'); // 隐藏加载指示器
+                    loadingOverlay.classList.remove('show');
                 }, 300);
             }
         }
@@ -352,7 +303,7 @@
             const month = document.getElementById('monthSelect').value;
             const analysisSection = document.getElementById('annualAnalysisSection');
 
-            if (month === '') { // 仅当选择了“所有月份”时显示
+            if (month === '') {
                 analysisSection.style.display = 'block';
                 document.getElementById('totalBookingsCount').innerText = analysis.total_bookings_count;
                 document.getElementById('averageDuration').innerText = analysis.average_duration.toFixed(2);
@@ -361,66 +312,38 @@
                 document.getElementById('averageMonthlyRevenue').innerText = analysis.average_monthly_revenue.toFixed(2);
                 document.getElementById('averageMonthlyExpenses').innerText = analysis.average_monthly_expenses.toFixed(2);
             } else {
-                analysisSection.style.display = 'none'; // 否则隐藏
+                analysisSection.style.display = 'none';
             }
         }
 
         function updateCardBorderColors() {
-            // Use querySelectorAll to get all cards
             const cards = document.querySelectorAll('.summary-cards .card');
-
             cards.forEach(card => {
-                const cardType = card.dataset.cardType; // Get the type from data-card-type attribute
+                const cardType = card.dataset.cardType;
                 let value;
                 let color;
-
                 switch (cardType) {
-                    case 'revenue':
-                        value = parseFloat(document.getElementById('totalBookingRevenue').innerText);
-                        color = '#28a745'; // Bootstrap success green
-                        break;
-                    case 'expenses':
-                        value = parseFloat(document.getElementById('totalMonthlyExpenses').innerText);
-                        color = '#dc3545'; // Bootstrap danger red
-                        break;
-                    case 'profit':
-                        value = parseFloat(document.getElementById('grossProfit').innerText);
-                        color = value >= 0 ? '#007bff' : '#dc3545'; // Bootstrap primary blue or danger red
-                        break;
-                    case 'fee':
-                        value = parseFloat(document.getElementById('managementFee').innerText);
-                        color = '#6c757d'; // Bootstrap secondary gray
-                        break;
-                    case 'income':
-                        value = parseFloat(document.getElementById('monthlyIncome').innerText);
-                        color = value >= 0 ? '#17a2b8' : '#dc3545'; // Bootstrap info teal or danger red
-                        break;
-                    case 'occupancy':
-                        value = parseFloat(document.getElementById('totalOccupancyRate').innerText);
-                        color = '#ffc107'; // Bootstrap warning yellow
-                        break;
-                    default:
-                        color = '#e9ecef'; // Bootstrap light gray
+                    case 'revenue': value = parseFloat(document.getElementById('totalBookingRevenue').innerText); color = '#28a745'; break;
+                    case 'expenses': value = parseFloat(document.getElementById('totalMonthlyExpenses').innerText); color = '#dc3545'; break;
+                    case 'profit': value = parseFloat(document.getElementById('grossProfit').innerText); color = value >= 0 ? '#007bff' : '#dc3545'; break;
+                    case 'fee': value = parseFloat(document.getElementById('managementFee').innerText); color = '#6c757d'; break;
+                    case 'income': value = parseFloat(document.getElementById('monthlyIncome').innerText); color = value >= 0 ? '#17a2b8' : '#dc3545'; break;
+                    case 'occupancy': value = parseFloat(document.getElementById('totalOccupancyRate').innerText); color = '#ffc107'; break;
+                    default: color = '#e9ecef';
                 }
                 card.style.borderTopColor = color;
-                // You might also want to update the text color if it changes based on value
                 card.querySelector('.card-text').style.color = color;
             });
         }
 
-
         function updateDetailedRecords(data) {
             const dataRows = document.getElementById('dataRows');
-            dataRows.innerHTML = ''; // Clear existing rows
+            dataRows.innerHTML = '';
 
             if (data && data.length > 0) {
                 data.forEach(record => {
                     const row = document.createElement('tr');
-                    let unitNameDisplay = record.unit_name;
-                    if (record.unit_name === '_GENERAL_EXPENSE_') {
-                        unitNameDisplay = '通用';
-                    }
-
+                    let unitNameDisplay = record.unit_name === '_GENERAL_EXPENSE_' ? '通用' : record.unit_name;
                     row.innerHTML = `
                         <td>${record.type === 'booking' ? record.booking_number : '-'}</td>
                         <td>${record.date}</td>
@@ -438,43 +361,24 @@
                         <td class="text-end">${record.type === 'booking' ? record.total_booking_revenue.toFixed(2) : '-'}</td>
                         <td>${record.type === 'expense' ? record.additional_expense_category : '-'}</td>
                         <td class="text-end">${record.type === 'expense' ? record.additional_expense_amount.toFixed(2) : '-'}</td>
-                        ${current_user_role === 'admin' ? `
-                            <td>
-                                ${record.type === 'booking' ? `
-                                    ${record.booking_number ? `<a href="/edit_booking/${record.booking_number}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>` : '-'}
-                                ` : record.type === 'expense' ? `
-                                    ${record.expense_id ? `<a href="/edit_expense/${record.expense_id}?next=${encodeURIComponent(window.location.href)}" class="btn btn-sm btn-warning">编辑</a>` : '-'}
-                                ` : '-'}
-                            </td>
-                        ` : ''}
                     `;
                     dataRows.appendChild(row);
                 });
             } else {
-                const row = document.createElement('tr');
-                row.innerHTML = `<td colspan="16" class="text-center text-muted">没有数据可显示。</td>`;
-                dataRows.appendChild(row);
+                dataRows.innerHTML = '<tr><td colspan="16" class="text-center text-muted">没有数据可显示。</td></tr>';
             }
         }
 
         async function toggleDetailedRecords() {
             const detailedRecordsSection = document.getElementById('detailedRecordsSection');
-            const dataRows = document.getElementById('dataRows');
             const toggleButton = document.getElementById('toggleDetailedRecordsButton');
 
             if (detailedRecordsSection.style.display === 'none') {
-                // 显示详细记录
                 loadingOverlay.classList.add('show');
                 const year = document.getElementById('yearSelect').value;
                 const month = document.getElementById('monthSelect').value;
                 const roomType = document.getElementById('roomTypeSelect').value;
-
-                const queryParams = new URLSearchParams({
-                    year: year,
-                    month: month,
-                    room_type: roomType
-                }).toString();
-
+                const queryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
                 try {
                     const response = await fetch(`/api/detailed_data?${queryParams}`);
                     const result = await response.json();
@@ -483,16 +387,13 @@
                     toggleButton.innerHTML = '<i class="fas fa-eye-slash me-2"></i>隐藏详细';
                 } catch (error) {
                     console.error('Error fetching detailed data:', error);
-                    alert('加载详细数据失败。请检查后端服务器日志或尝试刷新页面。');
+                    alert('加载详细数据失败。');
                 } finally {
-                    setTimeout(() => {
-                        loadingOverlay.classList.remove('show');
-                    }, 300);
+                    setTimeout(() => { loadingOverlay.classList.remove('show'); }, 300);
                 }
             } else {
-                // 隐藏详细记录
                 detailedRecordsSection.style.display = 'none';
-                dataRows.innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
+                document.getElementById('dataRows').innerHTML = '<tr><td colspan="16" class="text-center text-muted">点击“查看详细”加载数据。</td></tr>';
                 toggleButton.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
             }
         }
@@ -500,36 +401,22 @@
         async function fetchChartData() {
             const year = document.getElementById('yearSelect').value;
             const roomType = document.getElementById('roomTypeSelect').value;
-            const month = ''; // For chart data, we always want all months for the selected year and room type
-
-            const queryParams = new URLSearchParams({
-                year: year,
-                month: month, // Pass empty month to get data for all months
-                room_type: roomType
-            }).toString();
-
+            const queryParams = new URLSearchParams({ year, room_type: roomType, month: '' }).toString();
             try {
                 const response = await fetch(`/api/chart_data?${queryParams}`);
                 const chartData = await response.json();
-
                 if (monthlyChart) {
-                    monthlyChart.destroy(); // Destroy existing chart before creating a new one
+                    monthlyChart.destroy();
                 }
-
                 const ctx = document.getElementById('monthlyChart').getContext('2d');
-
-                // 创建渐变色函数
                 function getGradient(chart, colorStart, colorEnd) {
                     const { ctx, chartArea } = chart;
-                    if (!chartArea) {
-                        return null;
-                    }
+                    if (!chartArea) return null;
                     const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
                     gradient.addColorStop(0, colorEnd);
                     gradient.addColorStop(1, colorStart);
                     return gradient;
                 }
-
                 monthlyChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -538,161 +425,43 @@
                             {
                                 label: '月度收入 (MYR)',
                                 data: chartData.monthly_revenue,
-                                backgroundColor: function(context) {
-                                    return getGradient(context.chart, 'rgba(40, 167, 69, 0.8)', 'rgba(129, 199, 132, 0.8)'); /* 从深绿到浅绿渐变 */
-                                },
+                                backgroundColor: (context) => getGradient(context.chart, 'rgba(40, 167, 69, 0.8)', 'rgba(129, 199, 132, 0.8)'),
                                 borderColor: 'rgba(40, 167, 69, 1)',
                                 borderWidth: 1,
                                 borderRadius: 6,
-                                hoverBackgroundColor: 'rgba(40, 167, 69, 0.9)',
-                                hoverBorderColor: 'rgba(40, 167, 69, 1)',
                             },
                             {
                                 label: '月度支出 (MYR)',
                                 data: chartData.monthly_expenses,
-                                backgroundColor: function(context) {
-                                    return getGradient(context.chart, 'rgba(220, 53, 69, 0.8)', 'rgba(239, 154, 154, 0.8)'); /* 从深红到浅红渐变 */
-                                },
+                                backgroundColor: (context) => getGradient(context.chart, 'rgba(220, 53, 69, 0.8)', 'rgba(239, 154, 154, 0.8)'),
                                 borderColor: 'rgba(220, 53, 69, 1)',
                                 borderWidth: 1,
                                 borderRadius: 6,
-                                hoverBackgroundColor: 'rgba(220, 53, 69, 0.9)',
-                                hoverBorderColor: 'rgba(220, 53, 69, 1)',
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        animation: {
-                            duration: 1000,
-                            easing: 'easeInOutQuart'
-                        },
                         plugins: {
-                            legend: {
-                                position: 'top',
-                                labels: {
-                                    font: {
-                                        size: 14,
-                                        family: 'Open Sans'
-                                    },
-                                    color: '#6c757d',
-                                    usePointStyle: true,
-                                    boxWidth: 10
-                                }
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                backgroundColor: 'rgba(0,0,0,0.7)',
-                                titleFont: {
-                                    size: 16,
-                                    family: 'Open Sans',
-                                    weight: 'bold'
-                                },
-                                bodyFont: {
-                                    size: 14,
-                                    family: 'Open Sans'
-                                },
-                                padding: 12,
-                                displayColors: true,
-                                callbacks: {
-                                    label: function(context) {
-                                        let label = context.dataset.label || '';
-                                        if (label) {
-                                            label += ': ';
-                                        }
-                                        if (context.parsed.y !== null) {
-                                            label += new Intl.NumberFormat('en-MY', { style: 'currency', currency: 'MYR' }).format(context.parsed.y);
-                                        }
-                                        return label;
-                                    }
-                                }
-                            },
+                            legend: { position: 'top' },
+                            tooltip: { mode: 'index', intersect: false },
                             datalabels: {
                                 anchor: 'end',
                                 align: 'top',
-                                formatter: function(value, context) {
-                                    return value.toFixed(2);
-                                },
-                                color: '#343a40',
-                                font: {
-                                    weight: 'bold',
-                                    size: 10
-                                },
-                                offset: 4,
-                                display: function(context) {
-                                    return context.dataset.data[context.dataIndex] > (context.chart.scales.y.max * 0.05);
-                                }
+                                formatter: (value) => value.toFixed(2),
+                                display: (context) => context.dataset.data[context.dataIndex] > (context.chart.scales.y.max * 0.05)
                             }
                         },
                         scales: {
-                            x: {
-                                grid: {
-                                    display: false
-                                },
-                                ticks: {
-                                    font: {
-                                        size: 12,
-                                        family: 'Open Sans'
-                                    },
-                                    color: '#6c757d'
-                                },
-                                title: {
-                                    display: true,
-                                    text: '月份',
-                                    font: {
-                                        size: 14,
-                                        family: 'Open Sans',
-                                        weight: 'bold'
-                                    },
-                                    color: '#343a40'
-                                }
-                            },
-                            y: {
-                                beginAtZero: true,
-                                grid: {
-                                    color: '#e0e0e0',
-                                    borderDash: [3, 3]
-                                },
-                                ticks: {
-                                    font: {
-                                        size: 12,
-                                        family: 'Open Sans'
-                                    },
-                                    color: '#6c757d'
-                                },
-                                title: {
-                                    display: true,
-                                    text: '金额 (MYR)',
-                                    font: {
-                                        size: 14,
-                                        family: 'Open Sans',
-                                        weight: 'bold'
-                                    },
-                                    color: '#343a40'
-                                }
-                            }
+                            x: { title: { display: true, text: '月份' } },
+                            y: { beginAtZero: true, title: { display: true, text: '金额 (MYR)' } }
                         }
                     }
                 });
             } catch (error) {
                 console.error('Error fetching chart data:', error);
             }
-        }
-
-        async function downloadMonthlyStatement() {
-            const year = document.getElementById('yearSelect').value;
-            const month = document.getElementById('monthSelect').value;
-            const roomType = document.getElementById('roomTypeSelect').value;
-
-            const queryParams = new URLSearchParams({
-                year: year,
-                month: month,
-                room_type: roomType
-            }).toString();
-
-            window.location.href = `/download_monthly_statement?${queryParams}`;
         }
     </script>
 </body>

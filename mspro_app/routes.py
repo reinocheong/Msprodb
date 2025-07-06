@@ -14,20 +14,17 @@ main = Blueprint('main', __name__)
 # --- HELPER FUNCTIONS ---
 
 def get_filtered_data(year, month=None, room_type=None):
-    # Base queries
     bookings_query = Booking.query
     expenses_query = Expense.query
 
-    # Year filter is mandatory
-    bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
-    expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
+    if year:
+        bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
+        expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
 
-    # Month filter
     if month:
         bookings_query = bookings_query.filter(extract('month', Booking.checkin) == month)
         expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
 
-    # Room type filter
     if room_type and room_type != 'All':
         bookings_query = bookings_query.filter(Booking.unit_name == room_type)
         expenses_query = expenses_query.filter(Expense.unit_name == room_type)
@@ -35,14 +32,12 @@ def get_filtered_data(year, month=None, room_type=None):
     return bookings_query.all(), expenses_query.all()
 
 def calculate_dashboard_data(bookings, expenses, year, month, room_type):
-    # Summary calculations
     total_booking_revenue = sum(b.total for b in bookings if b.total)
     total_monthly_expenses = sum(e.debit for e in expenses if e.debit)
     gross_profit = total_booking_revenue - total_monthly_expenses
     management_fee = gross_profit * 0.30
     monthly_income = gross_profit - management_fee
 
-    # Occupancy Rate Calculation
     if room_type and room_type != 'All':
         room_count = 1
     else:
@@ -51,8 +46,8 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     if month:
         days_in_month = calendar.monthrange(year, month)[1]
         total_possible_nights = room_count * days_in_month
-    else: # Annual
-        total_possible_nights = room_count * 365 # Simple approximation
+    else:
+        total_possible_nights = room_count * 365
 
     total_nights_booked = sum(b.duration for b in bookings if b.duration)
     total_occupancy_rate = (total_nights_booked / total_possible_nights) * 100 if total_possible_nights > 0 else 0
@@ -66,7 +61,6 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
         'total_occupancy_rate': total_occupancy_rate,
     }
 
-    # Analysis calculations (only for annual view)
     analysis = {}
     if not month:
         all_bookings_this_year = Booking.query.filter(extract('year', Booking.checkin) == year).all()
@@ -86,7 +80,7 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
 
     return summary, analysis
 
-# --- AUTHENTICATION ROUTES ---
+# --- AUTH ROUTES ---
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -121,26 +115,22 @@ def register():
         return redirect(url_for('main.login'))
     return render_template('register.html', title='Register', form=form)
 
-# --- CORE APPLICATION ROUTES ---
+# --- CORE APP ROUTES ---
 
 @main.route('/')
 @login_required
 def index():
     selected_year = request.args.get('year', datetime.now().year, type=int)
-    selected_month = request.args.get('month', request.args.get('month'), type=int)
+    selected_month_str = request.args.get('month', '')
+    selected_month = int(selected_month_str) if selected_month_str.isdigit() else None
     selected_room_type = request.args.get('room_type', 'All')
 
     bookings, expenses = get_filtered_data(selected_year, selected_month, selected_room_type)
     summary, analysis = calculate_dashboard_data(bookings, expenses, selected_year, selected_month, selected_room_type)
 
-    # Dynamic options for filters
-    years_options = db.session.query(extract('year', Booking.checkin)).distinct().order_by(extract('year', Booking.checkin).desc()).all()
-    years_options = [y[0] for y in years_options if y[0]]
-    
+    years_options = [y[0] for y in db.session.query(extract('year', Booking.checkin)).distinct().order_by(extract('year', Booking.checkin).desc()).all() if y[0]]
     months_options = [{'value': i, 'text': calendar.month_name[i]} for i in range(1, 13)]
-    
-    room_types = db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all()
-    room_types = ['All'] + [r[0] for r in room_types if r[0]]
+    room_types = ['All'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
 
     return render_template('index.html',
                            title='Dashboard',
@@ -150,15 +140,27 @@ def index():
                            months_options=months_options,
                            room_types=room_types,
                            default_year=str(selected_year),
-                           current_user_role=current_user.role,
-                           edit_booking_url_pattern=url_for('main.index') # Placeholder
+                           current_user_role=current_user.role
                            )
 
-# --- API ROUTES FOR CHARTS AND DYNAMIC DATA ---
+# --- API ROUTES ---
 
-@main.route('/api/chart_data')
+@main.route('/api/filter_data', methods=['GET'])
 @login_required
-def chart_data():
+def api_filter_data():
+    year = request.args.get('year', datetime.now().year, type=int)
+    month_str = request.args.get('month', '')
+    month = int(month_str) if month_str.isdigit() else None
+    room_type = request.args.get('room_type', 'All')
+    
+    bookings, expenses = get_filtered_data(year, month, room_type)
+    summary, analysis = calculate_dashboard_data(bookings, expenses, year, month, room_type)
+    
+    return jsonify({'summary': summary, 'analysis': analysis})
+
+@main.route('/api/chart_data', methods=['GET'])
+@login_required
+def api_chart_data():
     year = request.args.get('year', datetime.now().year, type=int)
     room_type = request.args.get('room_type', 'All')
     
@@ -177,11 +179,12 @@ def chart_data():
         'monthly_expenses': monthly_expenses
     })
 
-@main.route('/api/detailed_data')
+@main.route('/api/detailed_data', methods=['GET'])
 @login_required
-def detailed_data():
+def api_detailed_data():
     year = request.args.get('year', datetime.now().year, type=int)
-    month = request.args.get('month', type=int)
+    month_str = request.args.get('month', '')
+    month = int(month_str) if month_str.isdigit() else None
     room_type = request.args.get('room_type', 'All')
 
     bookings, expenses = get_filtered_data(year, month, room_type)

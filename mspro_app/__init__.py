@@ -2,13 +2,21 @@ from flask import Flask
 import os
 
 def create_app():
-    app = Flask(__name__, static_folder='../static', template_folder='templates')
+    # The static_folder needs to be relative to the instance path, 
+    # or an absolute path. Let's define it relative to the app's root.
+    app = Flask(__name__, instance_relative_config=True)
     
+    # Correct path for static files when app is in a sub-directory
+    app.static_folder = os.path.join(os.path.dirname(app.root_path), 'static')
+    app.template_folder = os.path.join(os.path.dirname(app.root_path), 'mspro_app', 'templates')
+
+
     # Configuration
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'a_default_secret_key')
-    database_url = os.environ.get('DATABASE_URL', 'sqlite:///local_dev.db').replace("postgres://", "postgresql://", 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config.from_mapping(
+        SECRET_KEY=os.environ.get('SECRET_KEY', 'dev'),
+        SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///local_dev.db').replace("postgres://", "postgresql://", 1),
+        SQLALCHEMY_TRACK_MODIFICATIONS=False,
+    )
 
     # Initialize extensions
     from .extensions import db, login_manager, migrate
@@ -17,8 +25,8 @@ def create_app():
     migrate.init_app(app, db)
 
     # Register Blueprints
-    from .routes import main as main_blueprint
-    app.register_blueprint(main_blueprint)
+    from . import routes
+    app.register_blueprint(routes.main)
 
     # User loader
     from .models import User
