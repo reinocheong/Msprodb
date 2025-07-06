@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import calendar
 from sqlalchemy import extract, func, and_, or_
 import math
+import pdfkit
 
 main = Blueprint('main', __name__)
 
@@ -37,7 +38,6 @@ def get_filtered_data(year, month=None, room_type=None):
     if month:
         expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
     
-    # FINAL FIX: When a room is selected, also include general expenses (where unit_name is NULL)
     if room_type and room_type != 'All':
         expenses_query = expenses_query.filter(
             or_(
@@ -161,6 +161,43 @@ def index():
                            default_year=str(selected_year),
                            current_user_role=current_user.role
                            )
+
+# --- PDF DOWNLOAD ROUTE ---
+
+@main.route('/download_monthly_statement')
+@login_required
+def download_monthly_statement():
+    year = request.args.get('year', datetime.now().year, type=int)
+    month = request.args.get('month', datetime.now().month, type=int)
+    room_type = request.args.get('room_type', 'All')
+
+    bookings, expenses = get_filtered_data(year, month, room_type)
+    summary, _ = calculate_dashboard_data(bookings, expenses, year, month, room_type)
+
+    # Render HTML template for PDF
+    rendered_html = render_template('pdf_template.html', 
+                                    year=year, 
+                                    month=calendar.month_name[month], 
+                                    room_type=room_type,
+                                    summary=summary,
+                                    bookings=bookings,
+                                    expenses=expenses)
+    
+    # Generate PDF from HTML
+    # Note: You might need to configure the path to wkhtmltopdf on your system
+    # For Render, you might need a buildpack or specify the path in your Dockerfile
+    try:
+        pdf = pdfkit.from_string(rendered_html, False)
+    except OSError as e:
+        # This can happen if wkhtmltopdf is not found
+        return f"Error generating PDF: {e}. Ensure wkhtmltopdf is installed and in your system's PATH.", 500
+
+
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'attachment; filename=monthly_statement_{year}_{month}.pdf'
+    
+    return response
 
 # --- API ROUTES ---
 
