@@ -173,25 +173,22 @@ def download_monthly_statement():
 
     bookings, expenses = get_filtered_data(year, month, room_type)
     summary, _ = calculate_dashboard_data(bookings, expenses, year, month, room_type)
+    
+    generation_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Render HTML template for PDF
     rendered_html = render_template('pdf_template.html', 
                                     year=year, 
                                     month=calendar.month_name[month], 
                                     room_type=room_type,
                                     summary=summary,
                                     bookings=bookings,
-                                    expenses=expenses)
+                                    expenses=expenses,
+                                    generation_time=generation_time)
     
-    # Generate PDF from HTML
-    # Note: You might need to configure the path to wkhtmltopdf on your system
-    # For Render, you might need a buildpack or specify the path in your Dockerfile
     try:
         pdf = pdfkit.from_string(rendered_html, False)
     except OSError as e:
-        # This can happen if wkhtmltopdf is not found
         return f"Error generating PDF: {e}. Ensure wkhtmltopdf is installed and in your system's PATH.", 500
-
 
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
