@@ -41,3 +41,9 @@ class ExpenseForm(FlaskForm):
     particulars = StringField('描述', validators=[DataRequired()])
     debit = FloatField('金额', validators=[DataRequired()])
     submit = SubmitField('提交')
+
+class PasswordResetForm(FlaskForm):
+    password = PasswordField('新密码', validators=[DataRequired()])
+    password2 = PasswordField(
+        '确认新密码', validators=[DataRequired(), EqualTo('password')])
+    submit = SubmitField('重置密码')

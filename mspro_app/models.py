@@ -2,6 +2,9 @@ from .extensions import db
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
+from flask import current_app
+from itsdangerous import URLSafeTimedSerializer as Serializer
+import time
 
 class User(UserMixin, db.Model):
     id = db.Column(db.String(80), primary_key=True)
@@ -17,6 +20,21 @@ class User(UserMixin, db.Model):
         
     def get_id(self):
         return self.id
+
+    def get_reset_password_token(self, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        return s.dumps({'user_id': self.id})
+
+    @staticmethod
+    def verify_reset_password_token(token, expires_sec=1800):
+        s = Serializer(current_app.config['SECRET_KEY'])
+        try:
+            data = s.loads(token, max_age=expires_sec)
+            user_id = data.get('user_id')
+        except Exception:
+            return None
+        return User.query.get(user_id)
+
 
 class Booking(db.Model):
     id = db.Column(db.String(80), primary_key=True, default=lambda: str(uuid.uuid4()))

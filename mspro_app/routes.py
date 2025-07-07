@@ -320,3 +320,36 @@ def update_user_permissions():
     db.session.commit()
     
     return jsonify({'success': True, 'message': '用户权限已更新'})
+
+@main.route('/request_password_reset/<user_id>', methods=['POST'])
+@login_required
+def request_password_reset(user_id):
+    if current_user.role != 'admin':
+        flash('您没有权限执行此操作。', 'danger')
+        return redirect(url_for('main.admin'))
+    
+    user = User.query.get_or_404(user_id)
+    token = user.get_reset_password_token()
+    reset_url = url_for('main.reset_password', token=token, _external=True)
+    
+    # For now, we flash the URL for the admin to copy.
+    # In production, you would email this URL to the user.
+    flash(f'请将此链接发送给用户以重置密码 (30分钟内有效): {reset_url}', 'info')
+    return redirect(url_for('main.admin'))
+
+@main.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = User.verify_reset_password_token(token)
+    if not user:
+        flash('无效或已过期的重置链接。', 'warning')
+        return redirect(url_for('main.login'))
+    
+    form = PasswordResetForm()
+    if form.validate_on_submit():
+        user.set_password(form.password.data)
+        db.session.commit()
+        flash('您的密码已成功重置！现在可以登录了。', 'success')
+        return redirect(url_for('main.login'))
+        
+    return render_template('reset_password.html', title='重置密码', form=form)
+

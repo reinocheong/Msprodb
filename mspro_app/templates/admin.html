@@ -26,29 +26,22 @@
                             </td>
                             <td>
                                 {% if user.role == 'owner' %}
-                                <form class="user-permissions-form" data-user-id="{{ user.id }}">
-                                    <div class="row">
-                                        {% for unit in all_units %}
-                                        <div class="col-md-4 col-sm-6">
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" value="{{ unit }}" id="check-{{ user.id }}-{{ loop.index }}"
-                                                    {% if unit in user.allowed_units %}checked{% endif %}>
-                                                <label class="form-check-label" for="check-{{ user.id }}-{{ loop.index }}">
-                                                    {{ unit }}
-                                                </label>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </form>
+                                <select class="select2-multiple form-control" multiple="multiple" data-user-id="{{ user.id }}">
+                                    {% for unit in all_units %}
+                                        <option value="{{ unit }}" {% if unit in user.allowed_units %}selected{% endif %}>{{ unit }}</option>
+                                    {% endfor %}
+                                </select>
                                 {% else %}
                                 <span class="text-muted">N/A</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if user.role == 'owner' %}
-                                <button class="btn btn-primary btn-sm save-btn" data-user-id="{{ user.id }}">保存更改</button>
+                                <button class="btn btn-primary btn-sm save-btn" data-user-id="{{ user.id }}">保存权限</button>
                                 {% endif %}
+                                <form action="{{ url_for('main.request_password_reset', user_id=user.id) }}" method="POST" class="d-inline mt-1">
+                                    <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('您确定要为该用户生成一个新的密码重置链接吗？')">重置密码</button>
+                                </form>
                             </td>
                         </tr>
                         {% endfor %}
@@ -61,44 +54,45 @@
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    const saveButtons = document.querySelectorAll('.save-btn');
+$(document).ready(function() {
+    // Initialize Select2
+    $('.select2-multiple').select2({
+        placeholder: "选择或搜索房源",
+        allowClear: true,
+        width: '100%'
+    });
 
-    saveButtons.forEach(button => {
-        button.addEventListener('click', function () {
-            const userId = this.getAttribute('data-user-id');
-            const form = document.querySelector(`.user-permissions-form[data-user-id="${userId}"]`);
-            const checkboxes = form.querySelectorAll('input[type="checkbox"]:checked');
-            const allowedUnits = Array.from(checkboxes).map(cb => cb.value);
+    // Handle save button click
+    $('.save-btn').on('click', function () {
+        const userId = $(this).data('user-id');
+        const selectedUnits = $(`.select2-multiple[data-user-id="${userId}"]`).val();
 
-            fetch('/api/update_user_permissions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // 如果需要CSRF令牌，请在这里添加
-                },
-                body: JSON.stringify({
-                    user_id: userId,
-                    allowed_units: allowedUnits
-                })
+        fetch('/api/update_user_permissions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                user_id: userId,
+                allowed_units: selectedUnits
             })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert('权限更新成功！');
-                    // 可以添加一些视觉反馈，比如按钮暂时变绿
-                    button.classList.add('btn-success');
-                    setTimeout(() => {
-                        button.classList.remove('btn-success');
-                    }, 2000);
-                } else {
-                    alert('权限更新失败: ' + data.message);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('发生网络错误，请稍后重试。');
-            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Visual feedback
+                const button = $(this);
+                button.text('已保存!').addClass('btn-success').removeClass('btn-primary');
+                setTimeout(() => {
+                    button.text('保存权限').removeClass('btn-success').addClass('btn-primary');
+                }, 2000);
+            } else {
+                alert('权限更新失败: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('发生网络错误，请稍后重试。');
         });
     });
 });
