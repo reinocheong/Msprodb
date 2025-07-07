@@ -64,14 +64,14 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_monthly_expenses = sum(clean_nan(e.debit) for e in expenses)
     gross_profit = total_booking_revenue - total_monthly_expenses
     
-    fee_percentage = 0.30 # Default value
-    if current_user.is_authenticated and hasattr(current_user, 'management_fee_percentage'):
+    fee_rate = 30.0 # Default value
+    if current_user.is_authenticated:
         # Use the user's specific fee, ensuring it's not None
-        user_fee = current_user.management_fee_percentage
+        user_fee = getattr(current_user, 'management_fee_percentage', 30.0)
         if user_fee is not None:
-            fee_percentage = user_fee / 100.0
-    
-    management_fee = gross_profit * fee_percentage
+            fee_rate = user_fee
+            
+    management_fee = gross_profit * (fee_rate / 100.0)
     monthly_income = gross_profit - management_fee
 
     if room_type and room_type != 'All':
@@ -93,7 +93,7 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
 
     summary = {
         'total_booking_revenue': total_booking_revenue, 'total_monthly_expenses': total_monthly_expenses,
-        'gross_profit': gross_profit, 'management_fee': management_fee,
+        'gross_profit': gross_profit, 'management_fee': management_fee, 'fee_rate': fee_rate,
         'monthly_income': monthly_income, 'total_occupancy_rate': total_occupancy_rate,
         'revpar': revpar
     }

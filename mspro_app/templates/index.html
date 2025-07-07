@@ -24,7 +24,7 @@
     <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">期间总支出</h5><p id="totalMonthlyExpenses" class="card-text display-6">0.00</p></div></div></div>
     <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">期间毛利</h5><p id="grossProfit" class="card-text display-6">0.00</p></div></div></div>
     <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">期间净收入</h5><p id="monthlyIncome" class="card-text display-6">0.00</p></div></div></div>
-    <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">管理费 (30%)</h5><p id="managementFee" class="card-text display-6">0.00</p></div></div></div>
+    <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">管理费 <span id="feePercentage" class="badge bg-secondary"></span></h5><p id="managementFee" class="card-text display-6">0.00</p></div></div></div>
     <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">入住率</h5><p id="totalOccupancyRate" class="card-text display-6">0.00%</p></div></div></div>
     <div class="col"><div class="card h-100 shadow-sm"><div class="card-body text-center"><h5 class="card-title text-muted">RevPAR</h5><p id="revpar" class="card-text display-6">0.00</p></div></div></div>
 </section>
@@ -95,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('totalMonthlyExpenses').textContent = (summary.total_monthly_expenses || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
         document.getElementById('grossProfit').textContent = (summary.gross_profit || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
         document.getElementById('managementFee').textContent = (summary.management_fee || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('feePercentage').textContent = `${(summary.fee_rate || 30.0).toFixed(1)}%`;
         document.getElementById('monthlyIncome').textContent = (summary.monthly_income || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
         document.getElementById('totalOccupancyRate').textContent = `${(summary.total_occupancy_rate || 0).toFixed(2)}%`;
         document.getElementById('revpar').textContent = (summary.revpar || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
