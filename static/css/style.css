@@ -1,25 +1,35 @@
-/* Custom styles will go here */
+/* 清新绿意 主题 */
+
+/* 全局样式 */
+body, html {
+    height: 100%;
+    background-color: #f8f9fa; /* 浅灰色背景 */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 更现代的字体 */
+}
+
+/* 加载动画 */
 #loading-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.85);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    display: none; /* Initially hidden */
+    backdrop-filter: blur(4px);
+    display: none; /* 初始隐藏 */
 }
 
 .spinner {
-    border: 8px solid #f3f3f3; /* Light grey */
-    border-top: 8px solid #3498db; /* Blue */
+    border: 8px solid #e9ecef; /* 更柔和的灰色 */
+    border-top: 8px solid #198754; /* 主题绿色 */
     border-radius: 50%;
     width: 60px;
     height: 60px;
-    animation: spin 2s linear infinite;
+    animation: spin 1.5s linear infinite;
 }
 
 @keyframes spin {
@@ -27,27 +37,36 @@
     100% { transform: rotate(360deg); }
 }
 
-body, html {
-    height: 100%;
-    background-color: #f8f9fa; /* 轻微的灰色背景，增加深度 */
-}
-
+/* 卡片样式 */
 .card {
-    border: none; /* 移除边框，让阴影效果更突出 */
-    border-radius: 0.75rem; /* 更圆润的边角 */
+    border: none;
+    border-radius: 0.75rem; /* 更大的圆角 */
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+.card:hover {
+    transform: translateY(-5px); /* 轻微上浮效果 */
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 按钮样式 */
 .btn-primary {
-    background-color: #0d6efd;
-    border-color: #0d6efd;
-    transition: background-color 0.2s ease-in-out;
+    background-color: #198754; /* 主题绿色 */
+    border-color: #198754;
 }
 
 .btn-primary:hover {
-    background-color: #0b5ed7;
-    border-color: #0a58ca;
+    background-color: #157347;
+    border-color: #146c43;
 }
 
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* 页脚 */
 .footer.mt-auto {
-    background-color: #e9ecef !important; /* 确保页脚颜色与背景协调 */
+    background-color: #ffffff; /* 白色页脚 */
+    border-top: 1px solid #dee2e6; /* 添加一条细线分隔 */
 }

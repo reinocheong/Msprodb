@@ -2,8 +2,6 @@
 {% block title %}民宿财务概览{% endblock %}
 
 {% block content %}
-<h1 class="text-center mb-5 text-success display-4 fw-bold">民宿财务概览</h1>
-
 <section class="card shadow-sm mb-5 p-4 bg-light-subtle">
     <div class="card-body">
         <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-filter me-2"></i>筛选条件</h2>
@@ -44,18 +42,56 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingOverlay.style.display = 'flex';
     }
 
-    // ... (rest of your script)
+    // Dummy promises for demonstration if the real ones are defined elsewhere
+    const summaryPromise = window.summaryPromise || fetch('/api/summary').then(res => res.json());
+    const monthlyRevenuePromise = window.monthlyRevenuePromise || fetch('/api/monthly-revenue').then(res => res.json());
 
     Promise.all([summaryPromise, monthlyRevenuePromise])
         .then(([summaryData, monthlyRevenueData]) => {
-            // ... (rest of your data handling)
+            // Populate summary cards
+            document.getElementById('totalBookingRevenue').textContent = (summaryData.total_revenue || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+            document.getElementById('totalMonthlyExpenses').textContent = (summaryData.total_expenses || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+            // ... populate other summary cards ...
 
+            // Render chart
             var ctx = document.getElementById('monthlyChart').getContext('2d');
-            // ... (rest of your chart code)
+            var myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: monthlyRevenueData.labels,
+                    datasets: [{
+                        label: '月度总收入',
+                        data: monthlyRevenueData.values,
+                        backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                        borderColor: 'rgba(25, 135, 84, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return 'RM ' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         })
         .catch(error => {
             console.error('Error fetching data:', error);
-            // ... (error handling)
+            const container = document.querySelector('.container');
+            if(container) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger';
+                errorDiv.textContent = '数据加载失败，请稍后重试。';
+                container.prepend(errorDiv);
+            }
         })
         .finally(() => {
             if (loadingOverlay) {
@@ -65,3 +101,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+
