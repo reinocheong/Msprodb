@@ -136,6 +136,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderHeatmap(data, year) {
+        // If data is empty, clear the heatmap and do nothing.
+        if (Object.keys(data).length === 0) {
+            document.getElementById('cal-heatmap').innerHTML = '';
+            return;
+        }
         cal.paint({
             data: { source: data, type: 'json' }, date: { start: new Date(`${year}-01-01`) },
             range: 12, scale: { color: { type: 'threshold', range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'], domain: [1, 3, 5, 10] } },
