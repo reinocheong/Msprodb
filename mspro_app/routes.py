@@ -64,10 +64,10 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_monthly_expenses = sum(clean_nan(e.debit) for e in expenses)
     gross_profit = total_booking_revenue - total_monthly_expenses
     
-    # Use user-specific management fee, default to 30% if not available
     fee_percentage = 0.30
     if current_user.is_authenticated:
-        fee_percentage = (current_user.management_fee_percentage or 30.0) / 100.0
+        # Ensure we use the user's specific fee, otherwise default to 30
+        fee_percentage = (getattr(current_user, 'management_fee_percentage', 30.0) or 30.0) / 100.0
     
     management_fee = gross_profit * fee_percentage
     monthly_income = gross_profit - management_fee

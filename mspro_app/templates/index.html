@@ -70,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const summaryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
         const comparisonParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
         const channelParams = new URLSearchParams({ year, room_type: roomType }).toString();
-        const heatmapParams = new URLSearchParams({ year, room_type: roomType }).toString();
 
         const summaryPromise = fetch(`/api/filter_data?${summaryParams}`).then(res => res.json());
         const comparisonPromise = fetch(`/api/chart_data?${comparisonParams}`).then(res => res.json());
@@ -131,39 +130,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (channelChart) channelChart.destroy();
         channelChart = new Chart(ctx, { type: 'doughnut', data: { labels: data.labels, datasets: [{ data: data.values, backgroundColor: ['#28a745', '#ffc107', '#007bff', '#dc3545', '#6c757d', '#17a2b8'] }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
-
-    function renderHeatmap(data, year) {
-        try {
-            document.getElementById('cal-heatmap').innerHTML = '';
-
-            if (!data || typeof data !== 'object') {
-                console.log('Heatmap data is invalid. Skipping render.');
-                return;
-            }
-
-            cal.paint({
-                data: { source: data, type: 'json' },
-                date: { start: new Date(`${year}-01-01`) },
-                range: 12,
-                scale: {
-                    color: {
-                        type: 'threshold',
-                        range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'],
-                        domain: [1, 3, 5, 10],
-                    },
-                },
-                domain: { type: 'month' },
-                subDomain: { type: 'day', radius: 2 },
-                // Use the v4-compliant way to set tooltips
-                subDomainTitle: (date, value) => {
-                    return (value ? value : 'No') + ' bookings on ' + date.toDateString();
-                }
-            });
-        } catch (error) {
-            console.error("Failed to render heatmap, likely due to a library error.", error);
-            document.getElementById('cal-heatmap').innerHTML = '<div class="text-center text-muted p-3">热力图数据无法加载。</div>';
-        }
-    }
     
     function fetchAndDisplayDetailedRecords() {
         const params = new URLSearchParams({ year: yearSelect.value, month: monthSelect.value, room_type: roomTypeSelect.value }).toString();
@@ -204,10 +170,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-
-
-
-
-
-
-
