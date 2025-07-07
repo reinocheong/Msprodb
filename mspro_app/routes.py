@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, make_response, r
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
 from .models import User, Booking, Expense
-from .forms import LoginForm, RegistrationForm, BookingForm, ExpenseForm, PasswordResetForm
+from .forms import LoginForm, RegistrationForm, BookingForm, ExpenseForm, PasswordResetForm, ChangePasswordForm
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -69,13 +69,12 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     if room_type and room_type != 'All':
         room_count = 1
     else:
-        # This logic needs to be more robust if there are no bookings for the user
         if current_user.is_authenticated and current_user.role == 'owner':
             room_count = len(current_user.allowed_units or [])
         else:
             room_count = db.session.query(func.count(func.distinct(Booking.unit_name))).scalar()
     
-    room_count = room_count or 1 # Avoid division by zero
+    room_count = room_count or 1
 
     days_in_period = calendar.monthrange(year, month)[1] if month else 365
     total_possible_nights = room_count * days_in_period
@@ -279,7 +278,7 @@ def api_chart_data():
         }
 
         if compare_year:
-            compare_revenue, _, _ = get_monthly_data(compare_year) # We only need revenue for comparison year
+            compare_revenue, _, _ = get_monthly_data(compare_year)
             response['compare_year'] = {'year': compare_year, 'revenue': compare_revenue}
             
         return jsonify(response)
@@ -376,4 +375,20 @@ def reset_password(token):
         return redirect(url_for('main.login'))
         
     return render_template('reset_password.html', title='重置密码', form=form)
+
+@main.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+        if not current_user.check_password(form.current_password.data):
+            flash('当前密码不正确，请重试。', 'danger')
+            return redirect(url_for('main.change_password'))
+        
+        current_user.set_password(form.new_password.data)
+        db.session.commit()
+        flash('您的密码已成功修改！', 'success')
+        return redirect(url_for('main.index'))
+        
+    return render_template('change_password.html', title='修改密码', form=form)
 
