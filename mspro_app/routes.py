@@ -69,16 +69,26 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     if room_type and room_type != 'All':
         room_count = 1
     else:
-        room_count = db.session.query(func.count(func.distinct(Booking.unit_name))).scalar() or 1
+        # This logic needs to be more robust if there are no bookings for the user
+        if current_user.is_authenticated and current_user.role == 'owner':
+            room_count = len(current_user.allowed_units or [])
+        else:
+            room_count = db.session.query(func.count(func.distinct(Booking.unit_name))).scalar()
+    
+    room_count = room_count or 1 # Avoid division by zero
+
     days_in_period = calendar.monthrange(year, month)[1] if month else 365
     total_possible_nights = room_count * days_in_period
     total_nights_booked = sum(clean_nan(b.duration, 0) for b in bookings)
     total_occupancy_rate = (total_nights_booked / total_possible_nights) * 100 if total_possible_nights > 0 else 0
     
+    revpar = total_booking_revenue / total_possible_nights if total_possible_nights > 0 else 0
+
     summary = {
         'total_booking_revenue': total_booking_revenue, 'total_monthly_expenses': total_monthly_expenses,
         'gross_profit': gross_profit, 'management_fee': management_fee,
         'monthly_income': monthly_income, 'total_occupancy_rate': total_occupancy_rate,
+        'revpar': revpar
     }
     analysis = {}
     if not month:
@@ -253,22 +263,23 @@ def api_chart_data():
         room_type = request.args.get('room_type', 'All')
 
         def get_monthly_data(target_year):
-            revenue, expenses = [], []
+            revenue, expenses, cleaning_fees = [], [], []
             for month in range(1, 13):
                 bookings, expense_items = get_filtered_data(target_year, month, room_type)
                 revenue.append(sum(clean_nan(b.total) for b in bookings))
                 expenses.append(sum(clean_nan(e.debit) for e in expense_items))
-            return revenue, expenses
+                cleaning_fees.append(sum(clean_nan(b.cleaning_fee) for b in bookings))
+            return revenue, expenses, cleaning_fees
 
-        main_revenue, main_expenses = get_monthly_data(year)
+        main_revenue, main_expenses, main_cleaning_fees = get_monthly_data(year)
         
         response = {
             'months': calendar.month_name[1:],
-            'main_year': {'year': year, 'revenue': main_revenue, 'expenses': main_expenses}
+            'main_year': {'year': year, 'revenue': main_revenue, 'expenses': main_expenses, 'cleaning_fees': main_cleaning_fees}
         }
 
         if compare_year:
-            compare_revenue, _ = get_monthly_data(compare_year)
+            compare_revenue, _, _ = get_monthly_data(compare_year) # We only need revenue for comparison year
             response['compare_year'] = {'year': compare_year, 'revenue': compare_revenue}
             
         return jsonify(response)
@@ -302,63 +313,6 @@ def api_revenue_by_channel():
     except Exception as e:
         current_app.logger.error(f"Error in /api/revenue_by_channel: {e}"); return jsonify({"error": "Internal server error"}), 500
 
-@main.route('/api/booking_heatmap')
-@login_required
-def api_booking_heatmap():
-    try:
-        year = request.args.get('year', datetime.now().year, type=int)
-        room_type = request.args.get('room_type', 'All')
-        
-        query = db.session.query(
-            func.date(Booking.checkin),
-            func.count(Booking.id)
-        ).filter(extract('year', Booking.checkin) == year).filter(Booking.checkin.isnot(None))
-
-        if current_user.role == 'owner':
-            query = query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
-
-        if room_type and room_type != 'All':
-            query = query.filter(Booking.unit_name == room_type)
-
-        daily_bookings = query.group_by(func.date(Booking.checkin)).all()
-        
-        heatmap_data = {int(datetime.combine(day, datetime.min.time()).timestamp() * 1000): count for day, count in daily_bookings}
-        
-        return jsonify(heatmap_data)
-    except Exception as e:
-        current_app.logger.error(f"Error in /api/booking_heatmap: {e}"); return jsonify({"error": "Internal server error"}), 500
-
-
-@main.route('/api/detailed_data')
-@login_required
-def api_detailed_data():
-    try:
-        year = request.args.get('year', datetime.now().year, type=int)
-        month_str = request.args.get('month', ''); month = int(month_str) if month_str.isdigit() else None
-        room_type = request.args.get('room_type', 'All')
-        bookings, expenses = get_filtered_data(year, month, room_type)
-        data = []
-        for b in bookings:
-            data.append({
-                'type': 'booking', 'id': b.id, 'date': b.checkin.strftime('%Y-%m-%d'), 'unit_name': b.unit_name,
-                'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
-                'channel': b.channel, 'on_offline': b.on_offline, 'pax': b.pax, 'duration': b.duration,
-                'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
-                'platform_charge': clean_nan(b.platform_charge), 'total_booking_revenue': clean_nan(b.total), 
-                'booking_number': str(b.booking_number) if b.booking_number else None, 'expense_id': None,
-                'additional_expense_category': None, 'additional_expense_amount': 0
-            })
-        for e in expenses:
-            data.append({
-                'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'), 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
-                'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
-                'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
-                'booking_number': None, 'expense_id': e.id,
-                'additional_expense_category': e.particulars, 'additional_expense_amount': clean_nan(e.debit)
-            })
-        data.sort(key=lambda x: x['date']); return jsonify({'data': data})
-    except Exception as e:
-        current_app.logger.error(f"Error in /api/detailed_data: {e}"); return jsonify({"error": "Internal server error"}), 500
 
 @main.route('/admin')
 @login_required

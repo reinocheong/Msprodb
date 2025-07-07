@@ -11,6 +11,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(80), nullable=False, default='owner')
     allowed_units = db.Column(db.JSON, nullable=True, default=[])
+    management_fee_percentage = db.Column(db.Float, nullable=False, default=30.0)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
