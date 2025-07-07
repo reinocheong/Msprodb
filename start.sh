@@ -7,7 +7,7 @@ set -e
 # - Log access and errors to stdout to be captured by Render's log stream
 exec gunicorn wsgi:app \
     --bind 0.0.0.0:$PORT \
-    --workers 3 \
+    --workers 2 \
     --timeout 120 \
     --log-level=info \
     --access-logfile='-' \
