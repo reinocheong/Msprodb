@@ -1,5 +1,14 @@
 #!/bin/sh
 set -e
-# The FLASK_APP environment variable is set in Render's environment settings.
-# The database is now managed by the local import script, so upgrade is not needed on startup.
-exec gunicorn wsgi:app --bind 0.0.0.0:${PORT:-10000} --timeout 120
+
+# Start the Gunicorn server with production-ready settings
+# - Bind to the PORT environment variable provided by Render
+# - Use a reasonable number of workers
+# - Log access and errors to stdout to be captured by Render's log stream
+exec gunicorn wsgi:app \
+    --bind 0.0.0.0:$PORT \
+    --workers 3 \
+    --timeout 120 \
+    --log-level=info \
+    --access-logfile='-' \
+    --error-logfile='-'
