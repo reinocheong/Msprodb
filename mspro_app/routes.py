@@ -206,7 +206,7 @@ def api_detailed_data():
         data = []
         for b in bookings:
             data.append({
-                'type': 'booking', 'date': b.checkin.strftime('%Y-%m-%d'), 'unit_name': b.unit_name,
+                'type': 'booking', 'id': b.id, 'date': b.checkin.strftime('%Y-%m-%d'), 'unit_name': b.unit_name,
                 'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
                 'channel': b.channel, 'on_offline': b.on_offline, 'pax': b.pax, 'duration': b.duration,
                 'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
@@ -216,7 +216,7 @@ def api_detailed_data():
             })
         for e in expenses:
             data.append({
-                'type': 'expense', 'date': e.date.strftime('%Y-%m-%d'), 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
+                'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'), 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
                 'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
                 'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
                 'booking_number': None, 'expense_id': e.id,
