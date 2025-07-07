@@ -21,14 +21,42 @@ def clean_nan(value, default=0):
     return value
 
 def get_filtered_data(year, month=None, room_type=None):
-    bookings_query = Booking.query.filter(extract('year', Booking.checkin) == year)
-    expenses_query = Expense.query.filter(extract('year', Expense.date) == year)
+    """
+    Fetches bookings and expenses based on year, month, and room_type,
+    applying user-based permissions.
+    Admins can see all data. Owners can only see data for their allowed units.
+    """
+    # Base queries
+    bookings_query = Booking.query
+    expenses_query = Expense.query
+
+    # Apply user-based permissions
+    if current_user.is_authenticated and current_user.role == 'owner':
+        allowed_units = current_user.allowed_units or []
+        bookings_query = bookings_query.filter(Booking.unit_name.in_(allowed_units))
+        # For expenses, include expenses linked to their units OR general expenses
+        expenses_query = expenses_query.filter(
+            or_(Expense.unit_name.in_(allowed_units), Expense.unit_name.is_(None), Expense.unit_name == '')
+        )
+
+    # Apply time-based filters
+    bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
+    expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
     if month:
         bookings_query = bookings_query.filter(extract('month', Booking.checkin) == month)
         expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
+
+    # Apply room_type filter
     if room_type and room_type != 'All':
-        bookings_query = bookings_query.filter(Booking.unit_name == room_type)
-        expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name.is_(None)))
+        # Owners should not be able to query for rooms they don't have access to
+        if current_user.is_authenticated and current_user.role == 'owner':
+            if room_type in current_user.allowed_units:
+                bookings_query = bookings_query.filter(Booking.unit_name == room_type)
+                expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name.is_(None)))
+        else: # Admin can filter by any room
+            bookings_query = bookings_query.filter(Booking.unit_name == room_type)
+            expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name.is_(None)))
+
     return bookings_query.all(), expenses_query.all()
 
 def calculate_dashboard_data(bookings, expenses, year, month, room_type):
@@ -101,10 +129,23 @@ def register():
 def index():
     try:
         selected_year = request.args.get('year', datetime.now().year, type=int)
-        years_options = [y[0] for y in db.session.query(extract('year', Booking.checkin)).distinct().order_by(extract('year', Booking.checkin).desc()).all() if y[0]]
+        
+        # Base query for years, filtered by user permissions
+        years_query = db.session.query(extract('year', Booking.checkin)).distinct()
+        if current_user.role == 'owner':
+            years_query = years_query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
+        years_options = [y[0] for y in years_query.order_by(extract('year', Booking.checkin).desc()).all() if y[0]]
+        
         if not years_options: years_options = [selected_year]
+        
         months_options = [{'value': i, 'text': calendar.month_name[i]} for i in range(1, 13)]
-        room_types = ['All'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+        
+        # Filter room types based on user role
+        if current_user.role == 'admin':
+            room_types = ['All'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+        else: # 'owner'
+            room_types = ['All'] + (current_user.allowed_units or [])
+            
         return render_template('index.html', title='Dashboard', years_options=years_options, months_options=months_options, room_types=room_types, default_year=str(selected_year), current_user_role=current_user.role)
     except Exception as e:
         current_app.logger.error(f"Error in index route: {e}"); return "An internal error occurred.", 500
@@ -113,9 +154,18 @@ def index():
 @login_required
 def add_booking():
     form = BookingForm()
-    all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    # Restrict unit choices based on user role
+    if current_user.role == 'admin':
+        all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    else:
+        all_units = current_user.allowed_units or []
     form.unit_name.choices = all_units
+    
     if form.validate_on_submit():
+        # Security check: ensure owner doesn't submit a unit they don't own
+        if current_user.role == 'owner' and form.unit_name.data not in all_units:
+            flash('您无权为该房源添加预订。', 'danger')
+            return redirect(url_for('main.add_booking'))
         new_booking = Booking(); form.populate_obj(new_booking)
         db.session.add(new_booking); db.session.commit()
         flash('新预订已成功添加!', 'success')
@@ -126,10 +176,24 @@ def add_booking():
 @login_required
 def edit_booking(booking_id):
     booking = Booking.query.get_or_404(booking_id)
+    # Security check: ensure owner can only edit bookings for their units
+    if current_user.role == 'owner' and booking.unit_name not in (current_user.allowed_units or []):
+        flash('您无权编辑此预订。', 'danger')
+        return redirect(url_for('main.index'))
+        
     form = BookingForm(obj=booking)
-    all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    # Restrict unit choices based on user role
+    if current_user.role == 'admin':
+        all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    else:
+        all_units = current_user.allowed_units or []
     form.unit_name.choices = all_units
+    
     if form.validate_on_submit():
+        # Security check: ensure owner doesn't change unit to one they don't own
+        if current_user.role == 'owner' and form.unit_name.data not in all_units:
+            flash('您无权将预订分配给该房源。', 'danger')
+            return redirect(url_for('main.edit_booking', booking_id=booking_id))
         form.populate_obj(booking); db.session.commit()
         flash('预订信息已更新!', 'success')
         return redirect(request.args.get('next') or url_for('main.index'))
@@ -225,3 +289,34 @@ def api_detailed_data():
         data.sort(key=lambda x: x['date']); return jsonify({'data': data})
     except Exception as e:
         current_app.logger.error(f"Error in /api/detailed_data: {e}"); return jsonify({"error": "Internal server error"}), 500
+
+@main.route('/admin')
+@login_required
+def admin():
+    if current_user.role != 'admin':
+        flash('您没有权限访问此页面。', 'danger')
+        return redirect(url_for('main.index'))
+    
+    users = User.query.order_by(User.id).all()
+    all_units = sorted([r[0] for r in db.session.query(Booking.unit_name).distinct().all() if r[0]])
+    
+    return render_template('admin.html', title='管理面板', users=users, all_units=all_units)
+
+@main.route('/api/update_user_permissions', methods=['POST'])
+@login_required
+def update_user_permissions():
+    if current_user.role != 'admin':
+        return jsonify({'success': False, 'message': '权限不足'}), 403
+    
+    data = request.get_json()
+    user_id = data.get('user_id')
+    allowed_units = data.get('allowed_units', [])
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'success': False, 'message': '用户未找到'}), 404
+        
+    user.allowed_units = allowed_units
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': '用户权限已更新'})

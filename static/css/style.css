@@ -1,1 +1,24 @@
-/* Custom styles will go here */
+body, html {
+    height: 100%;
+    background-color: #f8f9fa; /* 轻微的灰色背景，增加深度 */
+}
+
+.card {
+    border: none; /* 移除边框，让阴影效果更突出 */
+    border-radius: 0.75rem; /* 更圆润的边角 */
+}
+
+.btn-primary {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    transition: background-color 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.footer.mt-auto {
+    background-color: #e9ecef !important; /* 确保页脚颜色与背景协调 */
+}
