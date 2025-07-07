@@ -53,6 +53,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const compareYearSelect = document.getElementById('compareYearSelect');
     const roomTypeSelect = document.getElementById('roomTypeSelect');
     const applyFiltersButton = document.getElementById('applyFiltersButton');
+    const downloadPdfButton = document.getElementById('downloadPdfButton');
+    const toggleDetailedRecordsButton = document.getElementById('toggleDetailedRecordsButton');
+    const detailedRecordsSection = document.getElementById('detailedRecordsSection');
+    const dataRows = document.getElementById('dataRows');
     const loadingOverlay = document.getElementById('loading-overlay');
     
     let comparisonChart, channelChart;
@@ -66,8 +70,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const roomType = roomTypeSelect.value;
 
         const chartParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
-        const channelParams = new URLSearchParams({ year }).toString();
-        const heatmapParams = new URLSearchParams({ year }).toString();
+        const channelParams = new URLSearchParams({ year, room_type: roomType }).toString(); // Also filter channel data by room type
+        const heatmapParams = new URLSearchParams({ year, room_type: roomType }).toString(); // Also filter heatmap data
 
         const comparisonPromise = fetch(`/api/chart_data?${chartParams}`).then(res => res.json());
         const channelPromise = fetch(`/api/revenue_by_channel?${channelParams}`).then(res => res.json());
@@ -80,7 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 renderHeatmap(heatmapData, year);
             })
             .catch(error => {
-                console.error('Error fetching data:', error);
+                console.error('Error fetching dashboard data:', error);
                 alert('仪表盘数据加载失败，请稍后重试。');
             })
             .finally(() => {
@@ -93,36 +97,25 @@ document.addEventListener('DOMContentLoaded', function() {
         if (comparisonChart) comparisonChart.destroy();
         
         const datasets = [{
-            label: `${data.main_year.year} 收入`,
-            data: data.main_year.revenue,
-            backgroundColor: 'rgba(25, 135, 84, 0.6)',
-            borderColor: 'rgba(25, 135, 84, 1)',
-            borderWidth: 1,
+            label: `${data.main_year.year} 收入`, data: data.main_year.revenue,
+            backgroundColor: 'rgba(25, 135, 84, 0.6)', borderColor: 'rgba(25, 135, 84, 1)',
             type: 'bar'
         }, {
-            label: `${data.main_year.year} 支出`,
-            data: data.main_year.expenses,
-            backgroundColor: 'rgba(220, 53, 69, 0.6)',
-            borderColor: 'rgba(220, 53, 69, 1)',
-            borderWidth: 1,
+            label: `${data.main_year.year} 支出`, data: data.main_year.expenses,
+            backgroundColor: 'rgba(220, 53, 69, 0.6)', borderColor: 'rgba(220, 53, 69, 1)',
             type: 'bar'
         }];
 
         if (data.compare_year) {
             datasets.push({
-                label: `${data.compare_year.year} 收入`,
-                data: data.compare_year.revenue,
-                borderColor: 'rgba(255, 159, 64, 1)',
-                backgroundColor: 'rgba(255, 159, 64, 0.2)',
-                borderWidth: 2,
-                type: 'line',
-                tension: 0.2
+                label: `${data.compare_year.year} 收入`, data: data.compare_year.revenue,
+                borderColor: 'rgba(255, 159, 64, 1)', backgroundColor: 'rgba(255, 159, 64, 0.2)',
+                type: 'line', tension: 0.2, borderWidth: 2
             });
         }
 
         comparisonChart = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: data.months, datasets: datasets },
+            type: 'bar', data: { labels: data.months, datasets: datasets },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
         });
     }
@@ -131,49 +124,78 @@ document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('channelChart').getContext('2d');
         if (channelChart) channelChart.destroy();
         channelChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: '收入',
-                    data: data.values,
-                    backgroundColor: ['#28a745', '#ffc107', '#007bff', '#dc3545', '#6c757d', '#17a2b8'],
-                }]
-            },
+            type: 'doughnut', data: { labels: data.labels, datasets: [{ data: data.values,
+            backgroundColor: ['#28a745', '#ffc107', '#007bff', '#dc3545', '#6c757d', '#17a2b8'] }] },
             options: { responsive: true, maintainAspectRatio: false }
         });
     }
 
     function renderHeatmap(data, year) {
         cal.paint({
-            data: { source: data, type: 'json' },
-            date: { start: new Date(`${year}-01-01`) },
-            range: 12,
-            scale: {
-                color: {
-                    type: 'threshold',
-                    range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'],
-                    domain: [1, 3, 5, 10],
-                },
-            },
-            domain: { type: 'month' },
-            subDomain: { type: 'day', radius: 2 },
-        }, [
-            [
-                CalHeatmap.Tooltip,
-                { text: (date, value) => (value ? value : 'No') + ' bookings on ' + date.toDateString() },
-            ],
-        ]);
+            data: { source: data, type: 'json' }, date: { start: new Date(`${year}-01-01`) },
+            range: 12, scale: { color: { type: 'threshold', range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'], domain: [1, 3, 5, 10] } },
+            domain: { type: 'month' }, subDomain: { type: 'day', radius: 2 }
+        }, [[ CalHeatmap.Tooltip, { text: (date, value) => (value || 'No') + ' bookings on ' + date.toDateString() } ]]);
+    }
+    
+    function fetchAndDisplayDetailedRecords() {
+        const params = new URLSearchParams({ year: yearSelect.value, month: '', room_type: roomTypeSelect.value }).toString();
+        fetch(`/api/detailed_data?${params}`).then(res => res.json()).then(res => {
+            if (res.error) throw new Error(res.error);
+            dataRows.innerHTML = '';
+            res.data.forEach(item => {
+                const row = `<tr>
+                    <td>${item.booking_number || '-'}</td><td>${item.date}</td>
+                    <td><span class="badge bg-${item.type === 'booking' ? 'success' : 'danger'}">${item.type}</span></td>
+                    <td>${item.unit_name}</td><td>${item.checkin}</td><td>${item.checkout}</td>
+                    <td>${item.channel}</td><td>${item.on_offline}</td><td>${item.pax || '-'}</td>
+                    <td>${item.duration || '-'}</td><td>${(item.price || 0).toFixed(2)}</td>
+                    <td>${(item.cleaning_fee || 0).toFixed(2)}</td><td>${(item.platform_charge || 0).toFixed(2)}</td>
+                    <td>${(item.total_booking_revenue || 0).toFixed(2)}</td>
+                    <td>${item.additional_expense_category || '-'}</td><td>${(item.additional_expense_amount || 0).toFixed(2)}</td>
+                    ${ "{% if current_user.role == 'admin' %}" }
+                    <td>
+                        ${item.type === 'booking' ? `<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>` : ''}
+                        ${item.type === 'expense' ? `<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>` : ''}
+                    </td>
+                    ${ "{% endif %}" }
+                </tr>`;
+                dataRows.insertAdjacentHTML('beforeend', row);
+            });
+            detailedRecordsSection.style.display = 'block';
+        }).catch(error => console.error('Error fetching detailed data:', error));
     }
 
     // Initial load
     updateDashboard();
 
-    // Event listener
+    // Event listeners
     applyFiltersButton.addEventListener('click', updateDashboard);
+    
+    downloadPdfButton.addEventListener('click', function() {
+        const month = prompt("请输入要生成哪个月份的月结单 (1-12):");
+        if (!month || isNaN(month) || month < 1 || month > 12) {
+            alert('无效的月份。'); return;
+        }
+        const params = new URLSearchParams({ year: yearSelect.value, month, room_type: roomTypeSelect.value }).toString();
+        window.location.href = `/download_monthly_statement?${params}`;
+    });
+
+    toggleDetailedRecordsButton.addEventListener('click', function() {
+        if (detailedRecordsSection.style.display === 'none') {
+            fetchAndDisplayDetailedRecords();
+            this.innerHTML = '<i class="fas fa-eye-slash me-2"></i>隐藏详细';
+            this.classList.replace('btn-outline-secondary', 'btn-secondary');
+        } else {
+            detailedRecordsSection.style.display = 'none';
+            this.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
+            this.classList.replace('btn-secondary', 'btn-outline-secondary');
+        }
+    });
 });
 </script>
 {% endblock %}
+
 
 
 

@@ -316,7 +316,7 @@ def api_booking_heatmap():
         daily_bookings = query.group_by(func.date(Booking.checkin)).all()
         
         # Convert to timestamp (milliseconds) and value for the heatmap library
-        heatmap_data = {int(day.timestamp() * 1000): count for day, count in daily_bookings}
+        heatmap_data = {int(datetime.combine(day, datetime.min.time()).timestamp() * 1000): count for day, count in daily_bookings}
         
         return jsonify(heatmap_data)
     except Exception as e:
