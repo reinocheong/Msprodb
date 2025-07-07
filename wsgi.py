@@ -14,103 +14,69 @@ app = create_app()
 @app.cli.command("import-data")
 @with_appcontext
 def import_data_command():
-    """Drops all tables, recreates them, and imports data from excel files."""
+    """Drops all tables, recreates them, and robustly imports data from excel files."""
     print("--- Starting Data Import Command ---")
-    
-    print("Step 1: Dropping all existing tables...")
     db.drop_all()
-    
-    print("Step 2: Creating all tables from models...")
+    print("Step 1: All tables dropped.")
     db.create_all()
-    print("SUCCESS: All tables created.")
+    print("Step 2: All tables created.")
 
     DATA_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'excel_data')
-    print(f"\nStep 3: Reading data from '{DATA_FOLDER}'...")
+    print(f"Step 3: Reading data from '{DATA_FOLDER}'...")
 
     # --- Booking Data Processing ---
-    all_booking_files = glob.glob(os.path.join(DATA_FOLDER, '*Booking.xlsx'))
-    booking_files = [f for f in all_booking_files if not os.path.basename(f).startswith('~$')]
-    
+    booking_files = [f for f in glob.glob(os.path.join(DATA_FOLDER, '*Booking.xlsx')) if not os.path.basename(f).startswith('~$')]
     if booking_files:
-        all_bookings_df = pd.concat((pd.read_excel(f, engine='openpyxl') for f in booking_files), ignore_index=True)
-        print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(all_bookings_df)}")
+        df_b = pd.concat((pd.read_excel(f, engine='openpyxl') for f in booking_files), ignore_index=True)
+        print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(df_b)}")
         
-        all_bookings_df.rename(columns={
+        df_b.rename(columns={
             'Unit Name': 'unit_name', 'CHECKIN': 'checkin', 'CHECKOUT': 'checkout',
             'Channel': 'channel', 'ON/OFFLINE': 'on_offline', 'Booking Number': 'booking_number',
             'Pax': 'pax', 'Duration': 'duration', 'Price': 'price',
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
-        all_bookings_df['checkin'] = pd.to_datetime(all_bookings_df['checkin'], errors='coerce')
-        all_bookings_df['checkout'] = pd.to_datetime(all_bookings_df['checkout'], errors='coerce')
-        all_bookings_df.dropna(subset=['checkin', 'checkout'], inplace=True)
+        # --- CRITICAL FIX: Ensure booking_number is always a string ---
+        if 'booking_number' in df_b.columns:
+            df_b['booking_number'] = df_b['booking_number'].astype(str)
 
-        all_bookings_df['pax'] = pd.to_numeric(all_bookings_df['pax'], errors='coerce')
-        all_bookings_df['duration'] = pd.to_numeric(all_bookings_df['duration'], errors='coerce')
+        df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
+        df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
+        df_b.dropna(subset=['checkin', 'checkout'], inplace=True)
 
-        INT_MAX = 2147483647
-        pax_problems = all_bookings_df['pax'] > INT_MAX
-        duration_problems = all_bookings_df['duration'] > INT_MAX
-        problematic_rows = all_bookings_df[pax_problems | duration_problems]
+        for col in ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']:
+            if col in df_b.columns:
+                df_b[col] = pd.to_numeric(df_b[col], errors='coerce')
 
-        if not problematic_rows.empty:
-            all_bookings_df = all_bookings_df[~(pax_problems | duration_problems)]
-
-        all_bookings_df.dropna(subset=['pax', 'duration'], inplace=True)
-        all_bookings_df['pax'] = all_bookings_df['pax'].astype(int)
-        all_bookings_df['duration'] = all_bookings_df['duration'].astype(int)
+        model_columns = [c.name for c in Booking.__table__.columns]
+        final_df_b = df_b[df_b.columns.intersection(model_columns)]
         
-        model_columns = [c.name for c in Booking.__table__.columns if c.name != 'id']
-        final_df = all_bookings_df[all_bookings_df.columns.intersection(model_columns)]
-
-        bookings_to_add = [Booking(**row) for index, row in final_df.iterrows()]
+        bookings_to_add = [Booking(**row) for _, row in final_df_b.iterrows() if 'id' not in row]
         db.session.bulk_save_objects(bookings_to_add)
         db.session.commit()
         print(f"SUCCESS: Imported {len(bookings_to_add)} booking records.")
 
-    # --- Expense Data Processing (Robust Version) ---
-    all_expense_files = glob.glob(os.path.join(DATA_FOLDER, '*expenses.xlsx'))
-    expense_files = [f for f in all_expense_files if not os.path.basename(f).startswith('~$')]
-
+    # --- Expense Data Processing ---
+    expense_files = [f for f in glob.glob(os.path.join(DATA_FOLDER, '*expenses.xlsx')) if not os.path.basename(f).startswith('~$')]
     if expense_files:
-        all_expenses_df = pd.concat((pd.read_excel(f, engine='openpyxl') for f in expense_files), ignore_index=True)
-        print(f"Found and merged {len(expense_files)} expense files. Total rows: {len(all_expenses_df)}")
+        df_e = pd.concat((pd.read_excel(f, engine='openpyxl') for f in expense_files), ignore_index=True)
+        print(f"Found and merged {len(expense_files)} expense files. Total rows: {len(df_e)}")
         
-        df = all_expenses_df.copy()
+        if 'Expenses Date' in df_e.columns: df_e['Date'] = df_e['Date'].fillna(df_e['Expenses Date'])
+        if 'PARTICULARS' in df_e.columns: df_e['Particulars'] = df_e['Particulars'].fillna(df_e['PARTICULARS'])
+        if 'DEBIT' in df_e.columns: df_e['Amount'] = df_e['Amount'].fillna(df_e['DEBIT'])
 
-        # Coalesce (merge) columns with different names into one canonical column
-        if 'Expenses Date' in df.columns and 'Date' in df.columns:
-            df['Date'] = df['Date'].fillna(df['Expenses Date'])
-        elif 'Expenses Date' in df.columns:
-            df['Date'] = df['Expenses Date']
-
-        if 'PARTICULARS' in df.columns and 'Particulars' in df.columns:
-            df['Particulars'] = df['Particulars'].fillna(df['PARTICULARS'])
-        elif 'PARTICULARS' in df.columns:
-            df['Particulars'] = df['PARTICULARS']
-
-        if 'DEBIT' in df.columns and 'Amount' in df.columns:
-            df['Amount'] = df['Amount'].fillna(df['DEBIT'])
-        elif 'DEBIT' in df.columns:
-            df['Amount'] = df['DEBIT']
-
-        # Final rename to match database model
-        df.rename(columns={
-            'Date': 'date',
-            'Unit Name': 'unit_name',
-            'Particulars': 'particulars',
-            'Amount': 'debit'
-        }, inplace=True)
+        df_e.rename(columns={'Date': 'date', 'Unit Name': 'unit_name', 'Particulars': 'particulars', 'Amount': 'debit'}, inplace=True)
         
-        df['date'] = pd.to_datetime(df['date'], errors='coerce')
-        df['debit'] = pd.to_numeric(df['debit'], errors='coerce')
-        df.dropna(subset=['date', 'debit'], inplace=True)
+        df_e['date'] = pd.to_datetime(df_e['date'], errors='coerce')
+        df_e['debit'] = pd.to_numeric(df_e['debit'], errors='coerce')
+        df_e.dropna(subset=['date', 'debit'], inplace=True)
 
-        expense_model_columns = [c.name for c in Expense.__table__.columns if c.name != 'id']
-        final_expense_df = df[df.columns.intersection(expense_model_columns)]
+        expense_model_columns = [c.name for c in Expense.__table__.columns]
+        final_df_e = df_e[df_e.columns.intersection(expense_model_columns)]
 
-        expenses_to_add = [Expense(**row) for index, row in final_expense_df.iterrows()]
+        expenses_to_add = [Expense(**row) for _, row in final_df_e.iterrows() if 'id' not in row]
         db.session.bulk_save_objects(expenses_to_add)
         db.session.commit()
         print(f"SUCCESS: Imported {len(expenses_to_add)} expense records.")
@@ -118,10 +84,8 @@ def import_data_command():
     # --- Add Default User ---
     print("\nStep 4: Adding default user...")
     if not User.query.filter_by(id='admin').first():
-        default_user = User(id='admin', role='admin')
-        default_user.set_password('admin123') 
-        db.session.add(default_user)
-        db.session.commit()
+        default_user = User(id='admin', role='admin'); default_user.set_password('admin123')
+        db.session.add(default_user); db.session.commit()
         print("SUCCESS: Default user 'admin' created.")
     else:
         print("INFO: Default user 'admin' already exists.")
