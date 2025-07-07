@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, make_response, r
 from flask_login import login_user, logout_user, login_required, current_user
 from .extensions import db
 from .models import User, Booking, Expense
-from .forms import LoginForm, RegistrationForm, BookingForm, ExpenseForm
+from .forms import LoginForm, RegistrationForm, BookingForm, ExpenseForm, PasswordResetForm
 import pandas as pd
 import numpy as np
 from datetime import datetime
