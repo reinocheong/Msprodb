@@ -7,20 +7,15 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Open+Sans:wght@300;400;600&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="bg-light">
-    <div id="loadingOverlay" class="loading-overlay">
-        <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
-        <div class="loading-text">加载中...</div>
-    </div>
+    <div id="loadingOverlay" class="loading-overlay"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>
 
     <div class="container-fluid">
         <nav class="navbar navbar-expand-lg navbar-dark bg-success mb-4 rounded-3 shadow-sm">
             <div class="container">
                 <a class="navbar-brand" href="{{ url_for('main.index') }}"><i class="fas fa-home me-2"></i>民宿财务概览</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
-                <div class="collapse navbar-collapse" id="navbarNav">
+                <div class="collapse navbar-collapse">
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item"><span class="nav-link">欢迎, {{ current_user.id }}!</span></li>
                         <li class="nav-item"><a class="nav-link" href="{{ url_for('main.logout') }}"><i class="fas fa-sign-out-alt me-1"></i>退出</a></li>
@@ -35,46 +30,19 @@
             <div class="card-body">
                 <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-filter me-2"></i>筛选条件</h2>
                 <div class="row g-3 align-items-end justify-content-center">
-                    <div class="col-md-3">
-                        <label for="yearSelect" class="form-label">年份:</label>
-                        <select id="yearSelect" class="form-select">
-                            {% for year in years_options %}<option value="{{ year }}" {% if year|string == default_year %}selected{% endif %}>{{ year }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="monthSelect" class="form-label">月份:</label>
-                        <select id="monthSelect" class="form-select">
-                            <option value="">所有月份</option>
-                            {% for month in months_options %}<option value="{{ month.value }}">{{ month.text }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="roomTypeSelect" class="form-label">房型:</label>
-                        <select id="roomTypeSelect" class="form-select">
-                            {% for room_type in room_types %}<option value="{{ room_type }}">{{ room_type }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-3 d-grid">
-                        <button id="applyFiltersButton" class="btn btn-primary"><i class="fas fa-filter me-2"></i>应用筛选</button>
-                    </div>
+                    <div class="col-md-3"><label for="yearSelect" class="form-label">年份:</label><select id="yearSelect" class="form-select">{% for year in years_options %}<option value="{{ year }}" {% if year|string == default_year %}selected{% endif %}>{{ year }}</option>{% endfor %}</select></div>
+                    <div class="col-md-3"><label for="monthSelect" class="form-label">月份:</label><select id="monthSelect" class="form-select"><option value="">所有月份</option>{% for month in months_options %}<option value="{{ month.value }}">{{ month.text }}</option>{% endfor %}</select></div>
+                    <div class="col-md-3"><label for="roomTypeSelect" class="form-label">房型:</label><select id="roomTypeSelect" class="form-select">{% for room_type in room_types %}<option value="{{ room_type }}">{{ room_type }}</option>{% endfor %}</select></div>
+                    <div class="col-md-3 d-grid"><button id="applyFiltersButton" class="btn btn-primary"><i class="fas fa-filter me-2"></i>应用筛选</button></div>
                 </div>
                 <div class="row g-3 justify-content-center mt-3">
-                    <div class="col-md-4 d-grid">
-                        <button id="toggleDetailedRecordsButton" class="btn btn-outline-secondary"><i class="fas fa-eye me-2"></i>查看详细</button>
-                    </div>
-                    <div class="col-md-4 d-grid">
-                        <button id="downloadPdfButton" class="btn btn-outline-info"><i class="fas fa-download me-2"></i>下载月结单</button>
-                    </div>
-                    {% if current_user.role == 'admin' %}
-                    <div class="col-md-4 d-grid">
-                        <a href="{{ url_for('main.add_booking') }}" class="btn btn-success"><i class="fas fa-plus-circle me-2"></i>新增预订</a>
-                    </div>
-                    {% endif %}
+                    <div class="col-md-4 d-grid"><button id="toggleDetailedRecordsButton" class="btn btn-outline-secondary"><i class="fas fa-eye me-2"></i>查看详细</button></div>
+                    <div class="col-md-4 d-grid"><button id="downloadPdfButton" class="btn btn-outline-info"><i class="fas fa-download me-2"></i>下载月结单</button></div>
+                    {% if current_user.role == 'admin' %}<div class="col-md-4 d-grid"><a href="{{ url_for('main.add_booking') }}" class="btn btn-success"><i class="fas fa-plus-circle me-2"></i>新增预订</a></div>{% endif %}
                 </div>
             </div>
         </section>
 
-        <!-- Summary Cards -->
         <section class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4 mb-5 summary-cards">
             <div class="col"><div class="card h-100 shadow-sm" data-card-type="revenue"><div class="card-body text-center"><h5 class="card-title text-muted">预订收入</h5><p id="totalBookingRevenue" class="card-text">0.00</p></div></div></div>
             <div class="col"><div class="card h-100 shadow-sm" data-card-type="expenses"><div class="card-body text-center"><h5 class="card-title text-muted">月支出</h5><p id="totalMonthlyExpenses" class="card-text">0.00</p></div></div></div>
@@ -84,11 +52,9 @@
             <div class="col"><div class="card h-100 shadow-sm" data-card-type="occupancy"><div class="card-body text-center"><h5 class="card-title text-muted">入住率</h5><p id="totalOccupancyRate" class="card-text">0.00%</p></div></div></div>
         </section>
 
-        <!-- Chart -->
         <section class="card shadow-sm mb-5 p-4"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">月度收支概览</h2><canvas id="monthlyChart" class="w-100" style="max-height: 400px;"></canvas></div></section>
 
-        <!-- Detailed Records -->
-        <section class="card shadow-sm mb-5 p-4" id="detailedRecordsSection" style="display: none;"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">详细记录</h2><div class="table-responsive"><table class="table table-hover table-bordered"><thead><tr><th>预订号</th><th>日期</th><th>类型</th><th>房型</th><th>入住日期</th><th>退房日期</th><th>渠道</th><th>在线/离线</th><th>人数</th><th>天数</th><th>��格</th><th>打扫费</th><th>平台费</th><th>总收入</th><th>额外支出类别</th><th>额外支出金额</th>{% if current_user.role == 'admin' %}<th>操作</th>{% endif %}</tr></thead><tbody id="dataRows"></tbody></table></div></div></section>
+        <section class="card shadow-sm mb-5 p-4" id="detailedRecordsSection" style="display: none;"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">详细记录</h2><div class="table-responsive"><table class="table table-hover table-bordered"><thead><tr><th>预订号</th><th>日期</th><th>类型</th><th>房型</th><th>入住日期</th><th>退房日期</th><th>渠道</th><th>在线/离线</th><th>人数</th><th>天数</th><th>价格</th><th>打扫费</th><th>平台费</th><th>总收入</th><th>额外支出类别</th><th>额外支出金额</th>{% if current_user.role == 'admin' %}<th>操作</th>{% endif %}</tr></thead><tbody id="dataRows"></tbody></table></div></div></section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -97,8 +63,8 @@
         const loadingOverlay = document.getElementById('loadingOverlay');
         let monthlyChart;
 
-        function showLoading() { loadingOverlay.classList.add('show'); }
-        function hideLoading() { loadingOverlay.classList.remove('show'); }
+        const showLoading = () => loadingOverlay.classList.add('show');
+        const hideLoading = () => loadingOverlay.classList.remove('show');
 
         async function fetchData(endpoint, params) {
             const queryParams = new URLSearchParams(params).toString();
@@ -117,11 +83,11 @@
 
         function updateSummary(summary) {
             if (!summary) return;
-            document.getElementById('totalBookingRevenue').innerText = (summary.total_booking_revenue || 0).toFixed(2);
-            document.getElementById('totalMonthlyExpenses').innerText = (summary.total_monthly_expenses || 0).toFixed(2);
-            document.getElementById('grossProfit').innerText = (summary.gross_profit || 0).toFixed(2);
-            document.getElementById('managementFee').innerText = (summary.management_fee || 0).toFixed(2);
-            document.getElementById('monthlyIncome').innerText = (summary.monthly_income || 0).toFixed(2);
+            const fields = ['total_booking_revenue', 'total_monthly_expenses', 'gross_profit', 'management_fee', 'monthly_income'];
+            fields.forEach(id => {
+                const key = id.replace(/([A-Z])/g, '_$1').toLowerCase();
+                document.getElementById(id).innerText = (summary[key] || 0).toFixed(2);
+            });
             document.getElementById('totalOccupancyRate').innerText = (summary.total_occupancy_rate || 0).toFixed(2) + '%';
         }
 
@@ -150,25 +116,41 @@
                 }
 
                 row.innerHTML = `
-                    <td>${record.booking_number || '-'}</td>
-                    <td>${record.date || '-'}</td>
+                    <td>${record.booking_number || '-'}</td><td>${record.date || '-'}</td>
                     <td><span class="badge ${record.type === 'booking' ? 'bg-success' : 'bg-danger'}">${record.type === 'booking' ? '预订' : '支出'}</span></td>
-                    <td>${record.unit_name || '通用'}</td>
-                    <td>${record.checkin || '-'}</td>
-                    <td>${record.checkout || '-'}</td>
-                    <td>${record.channel || '-'}</td>
-                    <td>${record.on_offline || '-'}</td>
-                    <td class="text-center">${record.pax || '-'}</td>
-                    <td class="text-center">${record.duration || '-'}</td>
-                    <td class="text-end">${(record.price || 0).toFixed(2)}</td>
-                    <td class="text-end">${(record.cleaning_fee || 0).toFixed(2)}</td>
-                    <td class="text-end">${(record.platform_charge || 0).toFixed(2)}</td>
-                    <td class="text-end">${(record.total_booking_revenue || 0).toFixed(2)}</td>
-                    <td>${record.additional_expense_category || '-'}</td>
-                    <td class="text-end">${(record.additional_expense_amount || 0).toFixed(2)}</td>
+                    <td>${record.unit_name || '通用'}</td><td>${record.checkin || '-'}</td><td>${record.checkout || '-'}</td>
+                    <td>${record.channel || '-'}</td><td>${record.on_offline || '-'}</td>
+                    <td class="text-center">${record.pax || '-'}</td><td class="text-center">${record.duration || '-'}</td>
+                    <td class="text-end">${(record.price || 0).toFixed(2)}</td><td class="text-end">${(record.cleaning_fee || 0).toFixed(2)}</td>
+                    <td class="text-end">${(record.platform_charge || 0).toFixed(2)}</td><td class="text-end">${(record.total_booking_revenue || 0).toFixed(2)}</td>
+                    <td>${record.additional_expense_category || '-'}</td><td class="text-end">${(record.additional_expense_amount || 0).toFixed(2)}</td>
                     ${isAdmin ? editButtonHtml : ''}
                 `;
                 dataRows.appendChild(row);
+            });
+        }
+
+        function renderChart(chartData) {
+            if (monthlyChart) monthlyChart.destroy();
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            const getGradient = (chart, colorStart, colorEnd) => {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return null;
+                const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                gradient.addColorStop(0, colorEnd);
+                gradient.addColorStop(1, colorStart);
+                return gradient;
+            };
+            monthlyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.months,
+                    datasets: [
+                        { label: '月度收入 (MYR)', data: chartData.monthly_revenue, backgroundColor: (c) => getGradient(c.chart, 'rgba(40, 167, 69, 0.8)', 'rgba(129, 199, 132, 0.8)'), borderColor: 'rgba(40, 167, 69, 1)', borderWidth: 1, borderRadius: 6 },
+                        { label: '月度支出 (MYR)', data: chartData.monthly_expenses, backgroundColor: (c) => getGradient(c.chart, 'rgba(220, 53, 69, 0.8)', 'rgba(239, 154, 154, 0.8)'), borderColor: 'rgba(220, 53, 69, 1)', borderWidth: 1, borderRadius: 6 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } } }
             });
         }
 
@@ -180,58 +162,22 @@
             
             const filterParams = { year, month, room_type: roomType };
             const summaryData = await fetchData('/api/filter_data', filterParams);
-            if (summaryData) {
-                updateSummary(summaryData.summary);
-            }
+            if (summaryData) updateSummary(summaryData.summary);
 
             const chartParams = { year, room_type: roomType, month: '' };
             const chartData = await fetchData('/api/chart_data', chartParams);
-            if (chartData) {
-                renderChart(chartData);
-            }
+            if (chartData) renderChart(chartData);
             
             document.getElementById('detailedRecordsSection').style.display = 'none';
             document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
-            
             hideLoading();
-        }
-
-        function renderChart(chartData) {
-            if (monthlyChart) monthlyChart.destroy();
-            const ctx = document.getElementById('monthlyChart').getContext('2d');
-            monthlyChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: chartData.months,
-                    datasets: [
-                        {
-                            label: '月度收入 (MYR)',
-                            data: chartData.monthly_revenue,
-                            backgroundColor: 'rgba(40, 167, 69, 0.8)',
-                            borderColor: 'rgba(40, 167, 69, 1)',
-                            borderWidth: 1
-                        },
-                        {
-                            label: '月度支出 (MYR)',
-                            data: chartData.monthly_expenses,
-                            backgroundColor: 'rgba(220, 53, 69, 0.8)',
-                            borderColor: 'rgba(220, 53, 69, 1)',
-                            borderWidth: 1
-                        }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             updateDashboard();
-
             document.getElementById('applyFiltersButton').addEventListener('click', updateDashboard);
-            
             document.getElementById('toggleDetailedRecordsButton').addEventListener('click', async () => {
                 const section = document.getElementById('detailedRecordsSection');
-                const button = document.getElementById('toggleDetailedRecordsButton');
                 if (section.style.display === 'none') {
                     showLoading();
                     const year = document.getElementById('yearSelect').value;
@@ -241,25 +187,20 @@
                     if (result) {
                         updateDetailedRecords(result.data);
                         section.style.display = 'block';
-                        button.innerHTML = '<i class="fas fa-eye-slash me-2"></i>隐藏详细';
+                        document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye-slash me-2"></i>隐藏详细';
                     }
                     hideLoading();
                 } else {
                     section.style.display = 'none';
-                    button.innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
+                    document.getElementById('toggleDetailedRecordsButton').innerHTML = '<i class="fas fa-eye me-2"></i>查看详细';
                 }
             });
-
             document.getElementById('downloadPdfButton').addEventListener('click', () => {
                 const year = document.getElementById('yearSelect').value;
                 const month = document.getElementById('monthSelect').value;
-                if (!month) {
-                    alert('请选择一个具体的月份来下载月结单。');
-                    return;
-                }
+                if (!month) { alert('请选择一个具体的月份来下载月结单。'); return; }
                 const roomType = document.getElementById('roomTypeSelect').value;
-                const queryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
-                window.location.href = `/download_monthly_statement?${queryParams}`;
+                window.location.href = `/download_monthly_statement?${new URLSearchParams({ year, month, room_type: roomType })}`;
             });
         });
     </script>
