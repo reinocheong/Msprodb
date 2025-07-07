@@ -137,13 +137,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function renderHeatmap(data, year) {
         try {
-            // Clear the container first to handle re-renders
             document.getElementById('cal-heatmap').innerHTML = '';
 
-            // More robust check: ensure data is a non-empty object
-            if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-                console.log('Heatmap data is empty. Skipping render.');
-                return; // Exit if no data to render
+            if (!data || typeof data !== 'object') {
+                console.log('Heatmap data is invalid. Skipping render.');
+                return;
             }
 
             cal.paint({
@@ -159,15 +157,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 domain: { type: 'month' },
                 subDomain: { type: 'day', radius: 2 },
-            }, [
-                [
-                    CalHeatmap.Tooltip,
-                    { text: (date, value) => (value ? value : 'No') + ' bookings on ' + date.toDateString() },
-                ],
-            ]);
+                // Use the v4-compliant way to set tooltips
+                subDomainTitle: (date, value) => {
+                    return (value ? value : 'No') + ' bookings on ' + date.toDateString();
+                }
+            });
         } catch (error) {
-            console.error("Failed to render heatmap, likely due to a library error with the provided data.", error);
-            // Optionally, display a user-friendly message in the heatmap container
+            console.error("Failed to render heatmap, likely due to a library error.", error);
             document.getElementById('cal-heatmap').innerHTML = '<div class="text-center text-muted p-3">热力图数据无法加载。</div>';
         }
     }
