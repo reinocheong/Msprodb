@@ -37,68 +37,105 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const yearSelect = document.getElementById('yearSelect');
+    const monthSelect = document.getElementById('monthSelect');
+    const roomTypeSelect = document.getElementById('roomTypeSelect');
+    const applyFiltersButton = document.getElementById('applyFiltersButton');
     const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.display = 'flex';
-    }
+    
+    let monthlyChart = null; // To hold the chart instance
 
-    // Dummy promises for demonstration if the real ones are defined elsewhere
-    const summaryPromise = window.summaryPromise || fetch('/api/summary').then(res => res.json());
-    const monthlyRevenuePromise = window.monthlyRevenuePromise || fetch('/api/monthly-revenue').then(res => res.json());
+    function updateDashboard(year, month, roomType) {
+        if (loadingOverlay) loadingOverlay.style.display = 'flex';
 
-    Promise.all([summaryPromise, monthlyRevenuePromise])
-        .then(([summaryData, monthlyRevenueData]) => {
-            // Populate summary cards
-            document.getElementById('totalBookingRevenue').textContent = (summaryData.total_revenue || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
-            document.getElementById('totalMonthlyExpenses').textContent = (summaryData.total_expenses || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
-            // ... populate other summary cards ...
+        const filterParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
+        const chartParams = new URLSearchParams({ year, room_type: roomType }).toString();
 
-            // Render chart
-            var ctx = document.getElementById('monthlyChart').getContext('2d');
-            var myChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: monthlyRevenueData.labels,
-                    datasets: [{
-                        label: '月度总收入',
-                        data: monthlyRevenueData.values,
-                        backgroundColor: 'rgba(25, 135, 84, 0.6)',
-                        borderColor: 'rgba(25, 135, 84, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                callback: function(value) {
-                                    return 'RM ' + value.toLocaleString();
+        const summaryPromise = fetch(`/api/filter_data?${filterParams}`).then(res => res.json());
+        const chartPromise = fetch(`/api/chart_data?${chartParams}`).then(res => res.json());
+
+        Promise.all([summaryPromise, chartPromise])
+            .then(([summaryRes, chartRes]) => {
+                if (summaryRes.error || chartRes.error) {
+                    throw new Error(summaryRes.error || chartRes.error);
+                }
+
+                // Populate summary cards from the 'summary' object
+                const summary = summaryRes.summary;
+                document.getElementById('totalBookingRevenue').textContent = (summary.total_booking_revenue || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+                document.getElementById('totalMonthlyExpenses').textContent = (summary.total_monthly_expenses || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+                document.getElementById('grossProfit').textContent = (summary.gross_profit || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+                document.getElementById('managementFee').textContent = (summary.management_fee || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+                document.getElementById('monthlyIncome').textContent = (summary.monthly_income || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+                document.getElementById('totalOccupancyRate').textContent = `${(summary.total_occupancy_rate || 0).toFixed(2)}%`;
+
+                // Render chart
+                const ctx = document.getElementById('monthlyChart').getContext('2d');
+                if (monthlyChart) {
+                    monthlyChart.destroy(); // Destroy old chart instance before creating a new one
+                }
+                monthlyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: chartRes.months, // Use 'months' from API response
+                        datasets: [{
+                            label: '月度总收入',
+                            data: chartRes.monthly_revenue, // Use 'monthly_revenue' from API response
+                            backgroundColor: 'rgba(25, 135, 84, 0.6)',
+                            borderColor: 'rgba(25, 135, 84, 1)',
+                            borderWidth: 1,
+                            hoverBackgroundColor: 'rgba(25, 135, 84, 0.8)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return 'RM ' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        return ` ${context.dataset.label}: RM ${context.parsed.y.toLocaleString()}`;
+                                    }
                                 }
                             }
                         }
                     }
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                const container = document.querySelector('.container');
+                if (container) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'alert alert-danger';
+                    errorDiv.textContent = '数据加载失败，请稍后重试。';
+                    container.prepend(errorDiv);
                 }
+            })
+            .finally(() => {
+                if (loadingOverlay) loadingOverlay.style.display = 'none';
             });
-        })
-        .catch(error => {
-            console.error('Error fetching data:', error);
-            const container = document.querySelector('.container');
-            if(container) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'alert alert-danger';
-                errorDiv.textContent = '数据加载失败，请稍后重试。';
-                container.prepend(errorDiv);
-            }
-        })
-        .finally(() => {
-            if (loadingOverlay) {
-                loadingOverlay.style.display = 'none';
-            }
-        });
+    }
+
+    // Initial load
+    updateDashboard(yearSelect.value, monthSelect.value, roomTypeSelect.value);
+
+    // Event listener for the filter button
+    applyFiltersButton.addEventListener('click', function() {
+        updateDashboard(yearSelect.value, monthSelect.value, roomTypeSelect.value);
+    });
 });
 </script>
 {% endblock %}
+
 
