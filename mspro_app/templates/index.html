@@ -75,14 +75,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const summaryPromise = fetch(`/api/filter_data?${summaryParams}`).then(res => res.json());
         const comparisonPromise = fetch(`/api/chart_data?${comparisonParams}`).then(res => res.json());
         const channelPromise = fetch(`/api/revenue_by_channel?${channelParams}`).then(res => res.json());
-        const heatmapPromise = fetch(`/api/booking_heatmap?${heatmapParams}`).then(res => res.json());
 
-        Promise.all([summaryPromise, comparisonPromise, channelPromise, heatmapPromise])
-            .then(([summaryData, comparisonData, channelData, heatmapData]) => {
+        Promise.all([summaryPromise, comparisonPromise, channelPromise])
+            .then(([summaryData, comparisonData, channelData]) => {
                 renderSummaryCards(summaryData.summary);
                 renderComparisonChart(comparisonData);
                 renderChannelChart(channelData);
-                renderHeatmap(heatmapData, year);
             })
             .catch(error => {
                 console.error('Error fetching dashboard data:', error);
