@@ -136,16 +136,40 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderHeatmap(data, year) {
-        // If data is empty, clear the heatmap and do nothing.
-        if (Object.keys(data).length === 0) {
+        try {
+            // Clear the container first to handle re-renders
             document.getElementById('cal-heatmap').innerHTML = '';
-            return;
+
+            // More robust check: ensure data is a non-empty object
+            if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
+                console.log('Heatmap data is empty. Skipping render.');
+                return; // Exit if no data to render
+            }
+
+            cal.paint({
+                data: { source: data, type: 'json' },
+                date: { start: new Date(`${year}-01-01`) },
+                range: 12,
+                scale: {
+                    color: {
+                        type: 'threshold',
+                        range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'],
+                        domain: [1, 3, 5, 10],
+                    },
+                },
+                domain: { type: 'month' },
+                subDomain: { type: 'day', radius: 2 },
+            }, [
+                [
+                    CalHeatmap.Tooltip,
+                    { text: (date, value) => (value ? value : 'No') + ' bookings on ' + date.toDateString() },
+                ],
+            ]);
+        } catch (error) {
+            console.error("Failed to render heatmap, likely due to a library error with the provided data.", error);
+            // Optionally, display a user-friendly message in the heatmap container
+            document.getElementById('cal-heatmap').innerHTML = '<div class="text-center text-muted p-3">热力图数据无法加载。</div>';
         }
-        cal.paint({
-            data: { source: data, type: 'json' }, date: { start: new Date(`${year}-01-01`) },
-            range: 12, scale: { color: { type: 'threshold', range: ['#c6e48b', '#7bc96f', '#239a3b', '#196127'], domain: [1, 3, 5, 10] } },
-            domain: { type: 'month' }, subDomain: { type: 'day', radius: 2 }
-        }, [[ CalHeatmap.Tooltip, { text: (date, value) => (value || 'No') + ' bookings on ' + date.toDateString() } ]]);
     }
     
     function fetchAndDisplayDetailedRecords() {
