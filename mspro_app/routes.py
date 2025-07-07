@@ -109,19 +109,6 @@ def index():
     except Exception as e:
         current_app.logger.error(f"Error in index route: {e}"); return "An internal error occurred.", 500
 
-@main.route('/add_booking', methods=['GET', 'POST'])
-@login_required
-def add_booking():
-    form = BookingForm()
-    all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
-    form.unit_name.choices = all_units
-    if form.validate_on_submit():
-        new_booking = Booking(); form.populate_obj(new_booking)
-        db.session.add(new_booking); db.session.commit()
-        flash('新预订已成功添加!', 'success')
-        return redirect(url_for('main.index'))
-    return render_template('add_booking.html', title='新增预订', form=form, all_units=all_units)
-
 @main.route('/edit_booking/<booking_id>', methods=['GET', 'POST'])
 @login_required
 def edit_booking(booking_id):

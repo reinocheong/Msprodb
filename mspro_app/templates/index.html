@@ -38,7 +38,6 @@
                 <div class="row g-3 justify-content-center mt-3">
                     <div class="col-md-4 d-grid"><button id="toggleDetailedRecordsButton" class="btn btn-outline-secondary"><i class="fas fa-eye me-2"></i>查看详细</button></div>
                     <div class="col-md-4 d-grid"><button id="downloadPdfButton" class="btn btn-outline-info"><i class="fas fa-download me-2"></i>下载月结单</button></div>
-                    {% if current_user.role == 'admin' %}<div class="col-md-4 d-grid"><a href="{{ url_for('main.add_booking') }}" class="btn btn-success"><i class="fas fa-plus-circle me-2"></i>新增预订</a></div>{% endif %}
                 </div>
             </div>
         </section>
@@ -54,7 +53,7 @@
 
         <section class="card shadow-sm mb-5 p-4"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">月度收支概览</h2><canvas id="monthlyChart" class="w-100" style="max-height: 400px;"></canvas></div></section>
 
-        <section class="card shadow-sm mb-5 p-4" id="detailedRecordsSection" style="display: none;"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">详细记录</h2><div class="table-responsive"><table class="table table-hover table-bordered"><thead><tr><th>预订号</th><th>日期</th><th>类型</th><th>房型</th><th>入住日期</th><th>退房日期</th><th>渠道</th><th>在线/离线</th><th>人数</th><th>天数</th><th>��格</th><th>打扫费</th><th>平台费</th><th>总收入</th><th>额外支出类别</th><th>额外支出金额</th>{% if current_user.role == 'admin' %}<th>操作</th>{% endif %}</tr></thead><tbody id="dataRows"></tbody></table></div></div></section>
+        <section class="card shadow-sm mb-5 p-4" id="detailedRecordsSection" style="display: none;"><div class="card-body"><h2 class="card-title text-center mb-4 text-secondary">详细记录</h2><div class="table-responsive"><table class="table table-hover table-bordered"><thead><tr><th>预订号</th><th>日期</th><th>类型</th><th>房型</th><th>入住日期</th><th>退房日期</th><th>渠道</th><th>在线/离线</th><th>人数</th><th>天数</th><th>价格</th><th>打扫费</th><th>平台费</th><th>总收入</th><th>额外支出类别</th><th>额外支出金额</th>{% if current_user.role == 'admin' %}<th>操作</th>{% endif %}</tr></thead><tbody id="dataRows"></tbody></table></div></div></section>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -112,7 +111,6 @@
                 let editButtonHtml = '';
                 if (isAdmin) {
                     let url = '';
-                    // Use the unique 'id' for the URL, not the booking_number
                     if (record.type === 'booking' && record.id) {
                         url = `/edit_booking/${record.id}?next=${encodeURIComponent(window.location.href)}`;
                     } else if (record.type === 'expense' && record.id) {
