@@ -312,7 +312,7 @@ def api_booking_heatmap():
         query = db.session.query(
             func.date(Booking.checkin),
             func.count(Booking.id)
-        ).filter(extract('year', Booking.checkin) == year)
+        ).filter(extract('year', Booking.checkin) == year).filter(Booking.checkin.isnot(None))
 
         if current_user.role == 'owner':
             query = query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
