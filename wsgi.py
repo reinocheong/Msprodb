@@ -27,7 +27,7 @@ def import_data_command():
     # --- Booking Data Processing ---
     booking_files = [f for f in glob.glob(os.path.join(DATA_FOLDER, '*Booking.xlsx')) if not os.path.basename(f).startswith('~$')]
     if booking_files:
-        df_b = pd.concat((pd.read_excel(f, engine='openpyxl') for f in booking_files), ignore_index=True)
+        df_b = pd.concat((pd.read_excel(f, engine='openpyxl', dtype={'Booking Number': str}) for f in booking_files), ignore_index=True)
         print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(df_b)}")
         
         df_b.rename(columns={
@@ -37,9 +37,8 @@ def import_data_command():
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
-        # --- CRITICAL FIX: Ensure booking_number is always a string ---
         if 'booking_number' in df_b.columns:
-            df_b['booking_number'] = df_b['booking_number'].astype(str)
+            df_b['booking_number'] = df_b['booking_number'].astype(str).fillna('')
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
