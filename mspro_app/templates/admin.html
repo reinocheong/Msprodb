@@ -13,6 +13,7 @@
                         <tr>
                             <th>用户邮箱 (ID)</th>
                             <th>角色</th>
+                            <th>管理费率 (%)</th>
                             <th>授权房源</th>
                             <th>操作</th>
                         </tr>
@@ -23,6 +24,9 @@
                             <td>{{ user.id }}</td>
                             <td>
                                 <span class="badge bg-{% if user.role == 'admin' %}success{% else %}secondary{% endif %}">{{ user.role }}</span>
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm fee-input" value="{{ user.management_fee_percentage }}" data-user-id="{{ user.id }}" style="width: 80px;">
                             </td>
                             <td>
                                 {% if user.role == 'owner' %}
@@ -37,7 +41,7 @@
                             </td>
                             <td>
                                 {% if user.role == 'owner' %}
-                                <button class="btn btn-primary btn-sm save-btn" data-user-id="{{ user.id }}">保存权限</button>
+                                <button class="btn btn-primary btn-sm save-btn" data-user-id="{{ user.id }}">保存</button>
                                 {% endif %}
                                 <form action="{{ url_for('main.request_password_reset', user_id=user.id) }}" method="POST" class="d-inline mt-1">
                                     <button type="submit" class="btn btn-warning btn-sm" onclick="return confirm('您确定要为该用户生成一个新的密码重置链接吗？')">重置密码</button>
@@ -66,6 +70,7 @@ $(document).ready(function() {
     $('.save-btn').on('click', function () {
         const userId = $(this).data('user-id');
         const selectedUnits = $(`.select2-multiple[data-user-id="${userId}"]`).val();
+        const feePercentage = $(`.fee-input[data-user-id="${userId}"]`).val();
 
         fetch('/api/update_user_permissions', {
             method: 'POST',
@@ -74,7 +79,8 @@ $(document).ready(function() {
             },
             body: JSON.stringify({
                 user_id: userId,
-                allowed_units: selectedUnits
+                allowed_units: selectedUnits,
+                management_fee_percentage: feePercentage
             })
         })
         .then(response => response.json())
@@ -84,10 +90,10 @@ $(document).ready(function() {
                 const button = $(this);
                 button.text('已保存!').addClass('btn-success').removeClass('btn-primary');
                 setTimeout(() => {
-                    button.text('保存权限').removeClass('btn-success').addClass('btn-primary');
+                    button.text('保存').removeClass('btn-success').addClass('btn-primary');
                 }, 2000);
             } else {
-                alert('权限更新失败: ' + data.message);
+                alert('更新失败: ' + data.message);
             }
         })
         .catch(error => {

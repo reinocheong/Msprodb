@@ -63,7 +63,13 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_booking_revenue = sum(clean_nan(b.total) for b in bookings)
     total_monthly_expenses = sum(clean_nan(e.debit) for e in expenses)
     gross_profit = total_booking_revenue - total_monthly_expenses
-    management_fee = gross_profit * 0.30
+    
+    # Use user-specific management fee, default to 30% if not available
+    fee_percentage = 0.30
+    if current_user.is_authenticated:
+        fee_percentage = (current_user.management_fee_percentage or 30.0) / 100.0
+    
+    management_fee = gross_profit * fee_percentage
     monthly_income = gross_profit - management_fee
 
     if room_type and room_type != 'All':
@@ -333,16 +339,26 @@ def update_user_permissions():
     
     data = request.get_json()
     user_id = data.get('user_id')
-    allowed_units = data.get('allowed_units', [])
-    
     user = User.query.get(user_id)
     if not user:
         return jsonify({'success': False, 'message': '用户未找到'}), 404
-        
-    user.allowed_units = allowed_units
+
+    if 'allowed_units' in data:
+        user.allowed_units = data.get('allowed_units', [])
+    
+    if 'management_fee_percentage' in data:
+        try:
+            fee = float(data['management_fee_percentage'])
+            if 0 <= fee <= 100:
+                user.management_fee_percentage = fee
+            else:
+                return jsonify({'success': False, 'message': '管理费率必须在0到100之间'}), 400
+        except (ValueError, TypeError):
+            return jsonify({'success': False, 'message': '无效的管理费率格式'}), 400
+            
     db.session.commit()
     
-    return jsonify({'success': True, 'message': '用户权限已更新'})
+    return jsonify({'success': True, 'message': '用户资料已更新'})
 
 @main.route('/request_password_reset/<user_id>', methods=['POST'])
 @login_required
