@@ -280,17 +280,20 @@ def api_chart_data():
 def api_revenue_by_channel():
     try:
         year = request.args.get('year', datetime.now().year, type=int)
-        bookings, _ = get_filtered_data(year) # No month/room filter for annual channel analysis
-        
-        channel_revenue = db.session.query(
+        room_type = request.args.get('room_type', 'All')
+
+        query = db.session.query(
             Booking.channel,
             func.sum(Booking.total)
         ).filter(extract('year', Booking.checkin) == year)
         
         if current_user.role == 'owner':
-            channel_revenue = channel_revenue.filter(Booking.unit_name.in_(current_user.allowed_units or []))
+            query = query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
+        
+        if room_type and room_type != 'All':
+            query = query.filter(Booking.unit_name == room_type)
             
-        channel_revenue = channel_revenue.group_by(Booking.channel).order_by(func.sum(Booking.total).desc()).all()
+        channel_revenue = query.group_by(Booking.channel).order_by(func.sum(Booking.total).desc()).all()
 
         labels = [item[0] or "Unknown" for item in channel_revenue]
         values = [clean_nan(item[1]) for item in channel_revenue]
@@ -304,6 +307,7 @@ def api_revenue_by_channel():
 def api_booking_heatmap():
     try:
         year = request.args.get('year', datetime.now().year, type=int)
+        room_type = request.args.get('room_type', 'All')
         
         query = db.session.query(
             func.date(Booking.checkin),
@@ -313,9 +317,11 @@ def api_booking_heatmap():
         if current_user.role == 'owner':
             query = query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
 
+        if room_type and room_type != 'All':
+            query = query.filter(Booking.unit_name == room_type)
+
         daily_bookings = query.group_by(func.date(Booking.checkin)).all()
         
-        # Convert to timestamp (milliseconds) and value for the heatmap library
         heatmap_data = {int(datetime.combine(day, datetime.min.time()).timestamp() * 1000): count for day, count in daily_bookings}
         
         return jsonify(heatmap_data)

@@ -6,8 +6,9 @@
     <div class="card-body">
         <h2 class="card-title text-center mb-4 text-secondary"><i class="fas fa-filter me-2"></i>筛选条件</h2>
         <div class="row g-3 align-items-end justify-content-center">
-            <div class="col-md-3"><label for="yearSelect" class="form-label">主年份:</label><select id="yearSelect" class="form-select">{% for year in years_options %}<option value="{{ year }}" {% if year|string == default_year %}selected{% endif %}>{{ year }}</option>{% endfor %}</select></div>
-            <div class="col-md-3"><label for="compareYearSelect" class="form-label">对比年份 (可选):</label><select id="compareYearSelect" class="form-select"><option value="">无</option>{% for year in years_options %}<option value="{{ year }}">{{ year }}</option>{% endfor %}</select></div>
+            <div class="col-md-2"><label for="yearSelect" class="form-label">主年份:</label><select id="yearSelect" class="form-select">{% for year in years_options %}<option value="{{ year }}" {% if year|string == default_year %}selected{% endif %}>{{ year }}</option>{% endfor %}</select></div>
+            <div class="col-md-2"><label for="compareYearSelect" class="form-label">对比年份:</label><select id="compareYearSelect" class="form-select"><option value="">无</option>{% for year in years_options %}<option value="{{ year }}">{{ year }}</option>{% endfor %}</select></div>
+            <div class="col-md-2"><label for="monthSelect" class="form-label">月份:</label><select id="monthSelect" class="form-select"><option value="">全年</option>{% for month in months_options %}<option value="{{ month.value }}">{{ month.text }}</option>{% endfor %}</select></div>
             <div class="col-md-3"><label for="roomTypeSelect" class="form-label">房型:</label><select id="roomTypeSelect" class="form-select">{% for room_type in room_types %}<option value="{{ room_type }}">{{ room_type }}</option>{% endfor %}</select></div>
             <div class="col-md-3 d-grid"><button id="applyFiltersButton" class="btn btn-primary"><i class="fas fa-sync-alt me-2"></i>更新仪表盘</button></div>
         </div>
@@ -51,6 +52,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const yearSelect = document.getElementById('yearSelect');
     const compareYearSelect = document.getElementById('compareYearSelect');
+    const monthSelect = document.getElementById('monthSelect');
     const roomTypeSelect = document.getElementById('roomTypeSelect');
     const applyFiltersButton = document.getElementById('applyFiltersButton');
     const downloadPdfButton = document.getElementById('downloadPdfButton');
@@ -67,18 +69,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const year = yearSelect.value;
         const compareYear = compareYearSelect.value;
+        const month = monthSelect.value;
         const roomType = roomTypeSelect.value;
 
-        const chartParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
-        const channelParams = new URLSearchParams({ year, room_type: roomType }).toString(); // Also filter channel data by room type
-        const heatmapParams = new URLSearchParams({ year, room_type: roomType }).toString(); // Also filter heatmap data
+        const summaryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
+        const comparisonParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
+        const channelParams = new URLSearchParams({ year, room_type: roomType }).toString();
+        const heatmapParams = new URLSearchParams({ year, room_type: roomType }).toString();
 
-        const comparisonPromise = fetch(`/api/chart_data?${chartParams}`).then(res => res.json());
+        const summaryPromise = fetch(`/api/filter_data?${summaryParams}`).then(res => res.json());
+        const comparisonPromise = fetch(`/api/chart_data?${comparisonParams}`).then(res => res.json());
         const channelPromise = fetch(`/api/revenue_by_channel?${channelParams}`).then(res => res.json());
         const heatmapPromise = fetch(`/api/booking_heatmap?${heatmapParams}`).then(res => res.json());
 
-        Promise.all([comparisonPromise, channelPromise, heatmapPromise])
-            .then(([comparisonData, channelData, heatmapData]) => {
+        Promise.all([summaryPromise, comparisonPromise, channelPromise, heatmapPromise])
+            .then(([summaryData, comparisonData, channelData, heatmapData]) => {
+                renderSummaryCards(summaryData.summary);
                 renderComparisonChart(comparisonData);
                 renderChannelChart(channelData);
                 renderHeatmap(heatmapData, year);
@@ -91,6 +97,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (loadingOverlay) loadingOverlay.style.display = 'none';
             });
     }
+    
+    function renderSummaryCards(summary) {
+        document.getElementById('totalBookingRevenue').textContent = (summary.total_booking_revenue || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('totalMonthlyExpenses').textContent = (summary.total_monthly_expenses || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('grossProfit').textContent = (summary.gross_profit || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('managementFee').textContent = (summary.management_fee || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('monthlyIncome').textContent = (summary.monthly_income || 0).toLocaleString('en-US', { style: 'currency', currency: 'MYR' });
+        document.getElementById('totalOccupancyRate').textContent = `${(summary.total_occupancy_rate || 0).toFixed(2)}%`;
+    }
 
     function renderComparisonChart(data) {
         const ctx = document.getElementById('comparisonChart').getContext('2d');
@@ -98,12 +113,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const datasets = [{
             label: `${data.main_year.year} 收入`, data: data.main_year.revenue,
-            backgroundColor: 'rgba(25, 135, 84, 0.6)', borderColor: 'rgba(25, 135, 84, 1)',
-            type: 'bar'
+            backgroundColor: 'rgba(25, 135, 84, 0.6)', borderColor: 'rgba(25, 135, 84, 1)', type: 'bar'
         }, {
             label: `${data.main_year.year} 支出`, data: data.main_year.expenses,
-            backgroundColor: 'rgba(220, 53, 69, 0.6)', borderColor: 'rgba(220, 53, 69, 1)',
-            type: 'bar'
+            backgroundColor: 'rgba(220, 53, 69, 0.6)', borderColor: 'rgba(220, 53, 69, 1)', type: 'bar'
         }];
 
         if (data.compare_year) {
@@ -113,21 +126,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 type: 'line', tension: 0.2, borderWidth: 2
             });
         }
-
-        comparisonChart = new Chart(ctx, {
-            type: 'bar', data: { labels: data.months, datasets: datasets },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
+        comparisonChart = new Chart(ctx, { type: 'bar', data: { labels: data.months, datasets: datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
     }
 
     function renderChannelChart(data) {
         const ctx = document.getElementById('channelChart').getContext('2d');
         if (channelChart) channelChart.destroy();
-        channelChart = new Chart(ctx, {
-            type: 'doughnut', data: { labels: data.labels, datasets: [{ data: data.values,
-            backgroundColor: ['#28a745', '#ffc107', '#007bff', '#dc3545', '#6c757d', '#17a2b8'] }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
+        channelChart = new Chart(ctx, { type: 'doughnut', data: { labels: data.labels, datasets: [{ data: data.values, backgroundColor: ['#28a745', '#ffc107', '#007bff', '#dc3545', '#6c757d', '#17a2b8'] }] }, options: { responsive: true, maintainAspectRatio: false } });
     }
 
     function renderHeatmap(data, year) {
@@ -139,44 +144,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function fetchAndDisplayDetailedRecords() {
-        const params = new URLSearchParams({ year: yearSelect.value, month: '', room_type: roomTypeSelect.value }).toString();
+        const params = new URLSearchParams({ year: yearSelect.value, month: monthSelect.value, room_type: roomTypeSelect.value }).toString();
         fetch(`/api/detailed_data?${params}`).then(res => res.json()).then(res => {
             if (res.error) throw new Error(res.error);
             dataRows.innerHTML = '';
             res.data.forEach(item => {
-                const row = `<tr>
-                    <td>${item.booking_number || '-'}</td><td>${item.date}</td>
-                    <td><span class="badge bg-${item.type === 'booking' ? 'success' : 'danger'}">${item.type}</span></td>
-                    <td>${item.unit_name}</td><td>${item.checkin}</td><td>${item.checkout}</td>
-                    <td>${item.channel}</td><td>${item.on_offline}</td><td>${item.pax || '-'}</td>
-                    <td>${item.duration || '-'}</td><td>${(item.price || 0).toFixed(2)}</td>
-                    <td>${(item.cleaning_fee || 0).toFixed(2)}</td><td>${(item.platform_charge || 0).toFixed(2)}</td>
-                    <td>${(item.total_booking_revenue || 0).toFixed(2)}</td>
-                    <td>${item.additional_expense_category || '-'}</td><td>${(item.additional_expense_amount || 0).toFixed(2)}</td>
-                    ${ "{% if current_user.role == 'admin' %}" }
-                    <td>
-                        ${item.type === 'booking' ? `<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>` : ''}
-                        ${item.type === 'expense' ? `<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>` : ''}
-                    </td>
-                    ${ "{% endif %}" }
-                </tr>`;
+                const row = `<tr><td>${item.booking_number||'-'}</td><td>${item.date}</td><td><span class="badge bg-${item.type==='booking'?'success':'danger'}">${item.type}</span></td><td>${item.unit_name}</td><td>${item.checkin}</td><td>${item.checkout}</td><td>${item.channel}</td><td>${item.on_offline}</td><td>${item.pax||'-'}</td><td>${item.duration||'-'}</td><td>${(item.price||0).toFixed(2)}</td><td>${(item.cleaning_fee||0).toFixed(2)}</td><td>${(item.platform_charge||0).toFixed(2)}</td><td>${(item.total_booking_revenue||0).toFixed(2)}</td><td>${item.additional_expense_category||'-'}</td><td>${(item.additional_expense_amount||0).toFixed(2)}</td>
+                    ${"{%if current_user.role=='admin'%}"}<td>${item.type==='booking'?`<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>`:''}${item.type==='expense'?`<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>`:''}</td>${"{%endif%}"}</tr>`;
                 dataRows.insertAdjacentHTML('beforeend', row);
             });
             detailedRecordsSection.style.display = 'block';
         }).catch(error => console.error('Error fetching detailed data:', error));
     }
 
-    // Initial load
-    updateDashboard();
-
-    // Event listeners
     applyFiltersButton.addEventListener('click', updateDashboard);
     
     downloadPdfButton.addEventListener('click', function() {
-        const month = prompt("请输入要生成哪个月份的月结单 (1-12):");
-        if (!month || isNaN(month) || month < 1 || month > 12) {
-            alert('无效的月份。'); return;
-        }
+        const month = monthSelect.value;
+        if (!month) { alert('请选择一个月份来生成月结单。'); return; }
         const params = new URLSearchParams({ year: yearSelect.value, month, room_type: roomTypeSelect.value }).toString();
         window.location.href = `/download_monthly_statement?${params}`;
     });
@@ -192,9 +177,12 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.replace('btn-secondary', 'btn-outline-secondary');
         }
     });
+    
+    updateDashboard();
 });
 </script>
 {% endblock %}
+
 
 
 
