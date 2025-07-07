@@ -249,15 +249,79 @@ def api_filter_data():
 def api_chart_data():
     try:
         year = request.args.get('year', datetime.now().year, type=int)
+        compare_year = request.args.get('compare_year', type=int)
         room_type = request.args.get('room_type', 'All')
-        monthly_revenue, monthly_expenses = [], []
-        for month in range(1, 13):
-            bookings, expenses = get_filtered_data(year, month, room_type)
-            monthly_revenue.append(sum(clean_nan(b.total) for b in bookings))
-            monthly_expenses.append(sum(clean_nan(e.debit) for e in expenses))
-        return jsonify({'months': calendar.month_name[1:], 'monthly_revenue': monthly_revenue, 'monthly_expenses': monthly_expenses})
+
+        def get_monthly_data(target_year):
+            revenue, expenses = [], []
+            for month in range(1, 13):
+                bookings, expense_items = get_filtered_data(target_year, month, room_type)
+                revenue.append(sum(clean_nan(b.total) for b in bookings))
+                expenses.append(sum(clean_nan(e.debit) for e in expense_items))
+            return revenue, expenses
+
+        main_revenue, main_expenses = get_monthly_data(year)
+        
+        response = {
+            'months': calendar.month_name[1:],
+            'main_year': {'year': year, 'revenue': main_revenue, 'expenses': main_expenses}
+        }
+
+        if compare_year:
+            compare_revenue, _ = get_monthly_data(compare_year)
+            response['compare_year'] = {'year': compare_year, 'revenue': compare_revenue}
+            
+        return jsonify(response)
     except Exception as e:
         current_app.logger.error(f"Error in /api/chart_data: {e}"); return jsonify({"error": "Internal server error"}), 500
+
+@main.route('/api/revenue_by_channel')
+@login_required
+def api_revenue_by_channel():
+    try:
+        year = request.args.get('year', datetime.now().year, type=int)
+        bookings, _ = get_filtered_data(year) # No month/room filter for annual channel analysis
+        
+        channel_revenue = db.session.query(
+            Booking.channel,
+            func.sum(Booking.total)
+        ).filter(extract('year', Booking.checkin) == year)
+        
+        if current_user.role == 'owner':
+            channel_revenue = channel_revenue.filter(Booking.unit_name.in_(current_user.allowed_units or []))
+            
+        channel_revenue = channel_revenue.group_by(Booking.channel).order_by(func.sum(Booking.total).desc()).all()
+
+        labels = [item[0] or "Unknown" for item in channel_revenue]
+        values = [clean_nan(item[1]) for item in channel_revenue]
+        
+        return jsonify({'labels': labels, 'values': values})
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/revenue_by_channel: {e}"); return jsonify({"error": "Internal server error"}), 500
+
+@main.route('/api/booking_heatmap')
+@login_required
+def api_booking_heatmap():
+    try:
+        year = request.args.get('year', datetime.now().year, type=int)
+        
+        query = db.session.query(
+            func.date(Booking.checkin),
+            func.count(Booking.id)
+        ).filter(extract('year', Booking.checkin) == year)
+
+        if current_user.role == 'owner':
+            query = query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
+
+        daily_bookings = query.group_by(func.date(Booking.checkin)).all()
+        
+        # Convert to timestamp (milliseconds) and value for the heatmap library
+        heatmap_data = {int(day.timestamp() * 1000): count for day, count in daily_bookings}
+        
+        return jsonify(heatmap_data)
+    except Exception as e:
+        current_app.logger.error(f"Error in /api/booking_heatmap: {e}"); return jsonify({"error": "Internal server error"}), 500
+
 
 @main.route('/api/detailed_data')
 @login_required
