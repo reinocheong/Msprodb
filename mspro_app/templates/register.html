@@ -9,9 +9,9 @@
             {{ form.username(class="form-control") }}
         </div>
         <div class="mb-3">
-                        {{ form.username.label(class="form-label") }}
-                        {{ form.username(class="form-control form-control-lg", placeholder="请输入您的用户名") }}
-                        {% for error in form.username.errors %}
+                        {{ form.password2.label(class="form-label") }}
+                        {{ form.password2(class="form-control form-control-lg", placeholder="请再次输入您的密码") }}
+                        {% for error in form.password2.errors %}
                             <div class="invalid-feedback d-block">{{ error }}</div>
                         {% endfor %}
                     </div>
