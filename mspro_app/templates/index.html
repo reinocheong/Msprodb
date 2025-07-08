@@ -138,8 +138,30 @@ document.addEventListener('DOMContentLoaded', function() {
             if (res.error) throw new Error(res.error);
             dataRows.innerHTML = '';
             res.data.forEach(item => {
-                const row = `<tr><td>${item.booking_number||'-'}</td><td>${item.date}</td><td><span class="badge bg-${item.type==='booking'?'success':'danger'}">${item.type}</span></td><td>${item.unit_name}</td><td>${item.checkin}</td><td>${item.checkout}</td><td>${item.channel}</td><td>${item.on_offline}</td><td>${item.pax||'-'}</td><td>${item.duration||'-'}</td><td>${(item.price||0).toFixed(2)}</td><td>${(item.cleaning_fee||0).toFixed(2)}</td><td>${(item.platform_charge||0).toFixed(2)}</td><td>${(item.total_booking_revenue||0).toFixed(2)}</td><td>${item.additional_expense_category||'-'}</td><td>${(item.additional_expense_amount||0).toFixed(2)}</td>
-                    ${"{%if current_user.role=='admin'%}"}<td>${item.type==='booking'?`<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>`:''}${item.type==='expense'?`<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>`:''}</td>${"{%endif%}"}</tr>`;
+                const row = `<tr>
+                    <td>${item.booking_number || '-'}</td>
+                    <td>${item.date}</td>
+                    <td><span class="badge bg-${item.type === 'booking' ? 'success' : 'danger'}">${item.type}</span></td>
+                    <td>${item.unit_name}</td>
+                    <td>${item.checkin}</td>
+                    <td>${item.checkout}</td>
+                    <td>${item.channel}</td>
+                    <td>${item.on_offline}</td>
+                    <td>${item.pax || '-'}</td>
+                    <td>${item.duration || '-'}</td>
+                    <td>${(item.price || 0).toFixed(2)}</td>
+                    <td>${(item.cleaning_fee || 0).toFixed(2)}</td>
+                    <td>${(item.platform_charge || 0).toFixed(2)}</td>
+                    <td>${(item.total_booking_revenue || 0).toFixed(2)}</td>
+                    <td>${item.additional_expense_category || '-'}</td>
+                    <td>${(item.additional_expense_amount || 0).toFixed(2)}</td>
+                    ${"{%if current_user.role=='admin'%}"}
+                    <td>
+                        ${item.type === 'booking' ? `<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>` : ''}
+                        ${item.type === 'expense' ? `<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>` : ''}
+                    </td>
+                    ${"{%endif%}"}
+                </tr>`;
                 dataRows.insertAdjacentHTML('beforeend', row);
             });
             detailedRecordsSection.style.display = 'block';
