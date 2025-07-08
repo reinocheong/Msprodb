@@ -1,14 +1,13 @@
-#!/bin/sh
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status.
 set -e
 
-# Apply database migrations
+# Run database migrations
+echo "Running database migrations..."
 flask db upgrade
 
-# Start the Gunicorn server with production-ready settings
-exec gunicorn wsgi:app \
-    --bind 0.0.0.0:$PORT \
-    --workers 2 \
-    --timeout 120 \
-    --log-level=info \
-    --access-logfile='-' \
-    --error-logfile='-'
+# Start Gunicorn server with a longer timeout
+echo "Starting Gunicorn server..."
+gunicorn --workers 2 --timeout 120 --bind 0.0.0.0:$PORT wsgi:app
+
