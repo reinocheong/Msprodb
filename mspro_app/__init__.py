@@ -1,34 +1,42 @@
 from flask import Flask
-from .extensions import db, login_manager, migrate
-from .routes import main as main_blueprint
-from .models import User
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import LoginManager
+from flask_migrate import Migrate
 import math
-import os
-from dotenv import load_dotenv
 
-basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
+# Initialize extensions
+db = SQLAlchemy()
+login_manager = LoginManager()
+login_manager.login_view = 'main.login' # Sets the login page endpoint
+migrate = Migrate()
 
 def create_app():
-    app = Flask(__name__)
+    """Create and configure an instance of the Flask application."""
+    app = Flask(__name__, instance_relative_config=True)
+    
+    # Load configuration
     app.config.from_object('config.Config')
 
+    # Initialize Flask extensions
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
 
-    # This is the critical user loader function
+    # Import and register blueprints
+    from . import routes
+    app.register_blueprint(routes.main)
+
+    # Define the user loader function
+    from .models import User
     @login_manager.user_loader
     def load_user(user_id):
         return User.query.get(user_id)
 
-    # Register the custom filter
+    # Register custom template filter
     @app.template_filter('clean_nan')
     def clean_nan_filter(value, default=0):
         if value is None or (isinstance(value, (float, int)) and math.isnan(value)):
             return default
         return value
-
-    app.register_blueprint(main_blueprint)
 
     return app
