@@ -40,16 +40,20 @@ def import_data_command():
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
-        if 'booking_number' in df_b.columns:
-            df_b['booking_number'] = df_b['booking_number'].astype(str).fillna('')
+        # Ensure all numeric columns exist and handle non-numeric values by coercing them to NaN, then filling with 0
+        numeric_cols = ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']
+        for col in numeric_cols:
+            if col not in df_b.columns:
+                df_b[col] = 0
+            df_b[col] = pd.to_numeric(df_b[col], errors='coerce').fillna(0)
+
+        # Explicitly cast integer columns to a nullable integer type to avoid overflow
+        df_b['pax'] = df_b['pax'].astype('Int64')
+        df_b['duration'] = df_b['duration'].astype('Int64')
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
         df_b.dropna(subset=['checkin', 'checkout'], inplace=True)
-
-        for col in ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']:
-            if col in df_b.columns:
-                df_b[col] = pd.to_numeric(df_b[col], errors='coerce')
 
         model_columns = [c.name for c in Booking.__table__.columns]
         final_df_b = df_b[df_b.columns.intersection(model_columns)]
@@ -72,7 +76,7 @@ def import_data_command():
         df_e.rename(columns={'Date': 'date', 'Unit Name': 'unit_name', 'Particulars': 'particulars', 'Amount': 'debit'}, inplace=True)
         
         df_e['date'] = pd.to_datetime(df_e['date'], errors='coerce')
-        df_e['debit'] = pd.to_numeric(df_e['debit'], errors='coerce')
+        df_e['debit'] = pd.to_numeric(df_e['debit'], errors='coerce').fillna(0)
         df_e.dropna(subset=['date', 'debit'], inplace=True)
 
         expense_model_columns = [c.name for c in Expense.__table__.columns]
