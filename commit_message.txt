@@ -1,0 +1,4 @@
+fix(Import): Add safeguard for out-of-range integer values
+
+- Added a data validation step in the import script (`wsgi.py`) to handle integers that are out of the standard range for a database integer type.
+- This prevents the `NumericValueOutOfRange` error during data import.
