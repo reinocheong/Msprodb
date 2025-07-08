@@ -320,50 +320,51 @@ def api_revenue_by_channel():
     except Exception as e:
         current_app.logger.error(f"Error in /api/revenue_by_channel: {e}"); return jsonify({"error": "Internal server error"}), 500
 
-@main.route('/api/detailed_data')
-@login_required
-def api_detailed_data():
-    try:
-        year = request.args.get('year', datetime.now().year, type=int)
-        month_str = request.args.get('month', ''); month = int(month_str) if month_str.isdigit() else None
-        room_type = request.args.get('room_type', 'All')
-        bookings, expenses = get_filtered_data(year, month, room_type)
-        data = []
-        for b in bookings:
-            data.append({
-                'type': 'booking',
-                'id': b.id,
-                'date': b.checkin.strftime('%Y-%m-%d'),
-                'unit_name': b.unit_name,
-                'checkin': b.checkin.strftime('%Y-%m-%d'),
-                'checkout': b.checkout.strftime('%Y-%m-%d'),
-                'channel': b.channel,
-                'on_offline': b.on_offline,
-                'pax': b.pax,
-                'duration': b.duration,
-                'price': clean_nan(b.price),
-                'cleaning_fee': clean_nan(b.cleaning_fee),
-                'platform_charge': clean_nan(b.platform_charge),
-                'total_booking_revenue': clean_nan(b.total),
-                'booking_number': str(b.booking_number) if b.booking_number else '-',
-                'additional_expense_category': '-',
-                'additional_expense_amount': 0
-            })
-        for e in expenses:
-            data.append({
-                'type': 'expense',
-                'id': e.id,
-                'date': e.date.strftime('%Y-%m-%d'),
-                'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
-                'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
-                'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
-                'booking_number': '-',
-                'additional_expense_category': e.particulars,
-                'additional_expense_amount': clean_nan(e.debit)
-            })
-        data.sort(key=lambda x: x['date']); return jsonify({'data': data})
-    except Exception as e:
-        current_app.logger.error(f"Error in /api/detailed_data: {e}"); return jsonify({"error": "Internal server error"}), 500
+# This is the definitive implementation for the detailed data API endpoint.
+    # It ensures that all required fields are present and correctly named.
+    @main.route('/api/detailed_data')
+    @login_required
+    def api_detailed_data():
+        try:
+            year = request.args.get('year', datetime.now().year, type=int)
+            month_str = request.args.get('month', ''); month = int(month_str) if month_str.isdigit() else None
+            room_type = request.args.get('room_type', 'All')
+            bookings, expenses = get_filtered_data(year, month, room_type)
+            
+            data = []
+            for b in bookings:
+                # Explicitly create the dictionary for bookings with all fields
+                booking_data = {
+                    'type': 'booking', 'id': b.id, 'date': b.checkin.strftime('%Y-%m-%d'),
+                    'unit_name': b.unit_name,
+                    'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
+                    'channel': b.channel, 'on_offline': b.on_offline, 'pax': b.pax, 'duration': b.duration,
+                    'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
+                    'platform_charge': clean_nan(b.platform_charge), 'total_booking_revenue': clean_nan(b.total), 
+                    'booking_number': str(b.booking_number) if b.booking_number else '-',
+                    'additional_expense_category': '-', 
+                    'additional_expense_amount': 0
+                }
+                data.append(booking_data)
+
+            for e in expenses:
+                # Explicitly create the dictionary for expenses
+                expense_data = {
+                    'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'),
+                    'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
+                    'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
+                    'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
+                    'booking_number': '-',
+                    'additional_expense_category': e.particulars, 
+                    'additional_expense_amount': clean_nan(e.debit)
+                }
+                data.append(expense_data)
+
+            data.sort(key=lambda x: x['date']); 
+            return jsonify({'data': data})
+        except Exception as e:
+            current_app.logger.error(f"Error in /api/detailed_data: {e}"); 
+            return jsonify({"error": "Internal server error"}), 500
 
 
 @main.route('/admin')
