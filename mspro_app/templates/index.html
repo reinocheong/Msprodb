@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let comparisonChart, channelChart;
 
-    function updateDashboard() {
+    async function updateDashboard() {
         if (loadingOverlay) loadingOverlay.style.display = 'flex';
 
         const year = yearSelect.value;
@@ -67,27 +67,43 @@ document.addEventListener('DOMContentLoaded', function() {
         const month = monthSelect.value;
         const roomType = roomTypeSelect.value;
 
-        const summaryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
-        const comparisonParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
-        const channelParams = new URLSearchParams({ year, room_type: roomType }).toString();
+        try {
+            localStorage.setItem('dashboardFilters', JSON.stringify({ year, compareYear, month, roomType }));
+        } catch (e) {
+            console.warn("无法将筛选条件保存到本地存储:", e);
+        }
 
-        const summaryPromise = fetch(`/api/filter_data?${summaryParams}`).then(res => res.json());
-        const comparisonPromise = fetch(`/api/chart_data?${comparisonParams}`).then(res => res.json());
-        const channelPromise = fetch(`/api/revenue_by_channel?${channelParams}`).then(res => res.json());
+        try {
+            // 1. Fetch Summary Data
+            const summaryParams = new URLSearchParams({ year, month, room_type: roomType }).toString();
+            const summaryRes = await fetch(`/api/filter_data?${summaryParams}`);
+            if (!summaryRes.ok) throw new Error(`总览数据接口请求失败，状态码: ${summaryRes.status}`);
+            const summaryData = await summaryRes.json();
+            if (summaryData.error) throw new Error(`总览数据接口返回错误: ${summaryData.error}`);
+            renderSummaryCards(summaryData.summary);
 
-        Promise.all([summaryPromise, comparisonPromise, channelPromise])
-            .then(([summaryData, comparisonData, channelData]) => {
-                renderSummaryCards(summaryData.summary);
-                renderComparisonChart(comparisonData);
-                renderChannelChart(channelData);
-            })
-            .catch(error => {
-                console.error('Error fetching dashboard data:', error);
-                alert('仪表盘数据加载失败，请稍后重试。');
-            })
-            .finally(() => {
-                if (loadingOverlay) loadingOverlay.style.display = 'none';
-            });
+            // 2. Fetch Comparison Chart Data
+            const comparisonParams = new URLSearchParams({ year, room_type: roomType, compare_year: compareYear }).toString();
+            const comparisonRes = await fetch(`/api/chart_data?${comparisonParams}`);
+            if (!comparisonRes.ok) throw new Error(`对比图数据接口请求失败，状态码: ${comparisonRes.status}`);
+            const comparisonData = await comparisonRes.json();
+            if (comparisonData.error) throw new Error(`对比图数据接口返回错误: ${comparisonData.error}`);
+            renderComparisonChart(comparisonData);
+
+            // 3. Fetch Channel Chart Data
+            const channelParams = new URLSearchParams({ year, room_type: roomType }).toString();
+            const channelRes = await fetch(`/api/revenue_by_channel?${channelParams}`);
+            if (!channelRes.ok) throw new Error(`渠道图数据接口请求失败，状态码: ${channelRes.status}`);
+            const channelData = await channelRes.json();
+            if (channelData.error) throw new Error(`渠道图数据接口返回错误: ${channelData.error}`);
+            renderChannelChart(channelData);
+
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            alert(`仪表盘加载失败: ${error.message}`);
+        } finally {
+            if (loadingOverlay) loadingOverlay.style.display = 'none';
+        }
     }
     
     function renderSummaryCards(summary) {
@@ -139,7 +155,10 @@ document.addEventListener('DOMContentLoaded', function() {
             dataRows.innerHTML = '';
             res.data.forEach(item => {
                 const row = `<tr><td>${item.booking_number||'-'}</td><td>${item.date}</td><td><span class="badge bg-${item.type==='booking'?'success':'danger'}">${item.type}</span></td><td>${item.unit_name}</td><td>${item.checkin}</td><td>${item.checkout}</td><td>${item.channel}</td><td>${item.on_offline}</td><td>${item.pax||'-'}</td><td>${item.duration||'-'}</td><td>${(item.price||0).toFixed(2)}</td><td>${(item.cleaning_fee||0).toFixed(2)}</td><td>${(item.platform_charge||0).toFixed(2)}</td><td>${(item.total_booking_revenue||0).toFixed(2)}</td><td>${item.additional_expense_category||'-'}</td><td>${(item.additional_expense_amount||0).toFixed(2)}</td>
-                    ${"{%if current_user.role=='admin'%}"}<td>${item.type==='booking'?`<a href="/edit_booking/${item.id}" class="btn btn-sm btn-outline-primary">编辑</a>`:''}${item.type==='expense'?`<a href="/edit_expense/${item.id}" class="btn btn-sm btn-outline-warning">编辑</a>`:''}</td>${"{%endif%}"}</tr>`;
+                    ${"{%if current_user.role=='admin'%}"}<td>
+                        ${item.type==='booking' ? `<a href="/edit_booking/${item.id}" class="btn btn-action" title="编辑预订"><i class="fas fa-pencil-alt"></i></a>` : ''}
+                        ${item.type==='expense' ? `<a href="/edit_expense/${item.id}" class="btn btn-action" title="编辑费用"><i class="fas fa-pencil-alt"></i></a>` : ''}
+                    </td>${"{%endif%}"}</tr>`;
                 dataRows.insertAdjacentHTML('beforeend', row);
             });
             detailedRecordsSection.style.display = 'block';
@@ -167,7 +186,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    updateDashboard();
+    function loadFiltersAndInitialize() {
+        try {
+            const savedFilters = localStorage.getItem('dashboardFilters');
+            if (savedFilters) {
+                const filters = JSON.parse(savedFilters);
+                if (filters.year && Array.from(yearSelect.options).some(opt => opt.value === filters.year)) {
+                    yearSelect.value = filters.year;
+                }
+                if (filters.compareYear && Array.from(compareYearSelect.options).some(opt => opt.value === filters.compareYear)) {
+                    compareYearSelect.value = filters.compareYear;
+                }
+                if (filters.month && Array.from(monthSelect.options).some(opt => opt.value === filters.month)) {
+                    monthSelect.value = filters.month;
+                }
+                if (filters.roomType && Array.from(roomTypeSelect.options).some(opt => opt.value === filters.roomType)) {
+                    roomTypeSelect.value = filters.roomType;
+                }
+            }
+        } catch (e) {
+            console.warn("无法从本地存储加载筛选条件:", e);
+            localStorage.removeItem('dashboardFilters');
+        }
+        updateDashboard();
+    }
+
+    loadFiltersAndInitialize();
 });
 </script>
 {% endblock %}

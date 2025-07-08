@@ -1,72 +1,126 @@
-/* 清新绿意 主题 */
+/* --- 全局与字体 --- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* 全局样式 */
-body, html {
-    height: 100%;
-    background-color: #f8f9fa; /* 浅灰色背景 */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* 更现代的字体 */
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: #e9ecef;
+    color: #343a40;
+    transition: background-color 0.3s;
 }
 
-/* 加载动画 */
-#loading-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-    backdrop-filter: blur(4px);
-    display: none; /* 初始隐藏 */
+/* --- 导航栏 --- */
+.navbar {
+    transition: all 0.3s ease-in-out;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
 }
+.navbar-brand { font-weight: 600; font-size: 1.4rem; }
+.nav-link { transition: color 0.2s ease-in-out; }
+.nav-link:hover { color: #ffffff; transform: translateY(-2px); }
 
-.spinner {
-    border: 8px solid #e9ecef; /* 更柔和的灰色 */
-    border-top: 8px solid #198754; /* 主题绿色 */
-    border-radius: 50%;
-    width: 60px;
-    height: 60px;
-    animation: spin 1.5s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* 卡片样式 */
+/* --- 卡片与液态玻璃效果 --- */
 .card {
-    border: none;
-    border-radius: 0.75rem; /* 更大的圆角 */
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
 }
-
 .card:hover {
-    transform: translateY(-5px); /* 轻微上浮效果 */
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
 }
+.card-title { font-weight: 600; color: #495057; }
+.card-body .display-6 { font-weight: 700; color: #28a745; }
 
-/* 按钮样式 */
+/* --- 按钮与表单 --- */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    border: none;
+}
 .btn-primary {
-    background-color: #198754; /* 主题绿色 */
-    border-color: #198754;
+    background-color: #28a745;
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
-
 .btn-primary:hover {
-    background-color: #157347;
-    border-color: #146c43;
+    background-color: #218838;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+.form-control, .form-select {
+    border-radius: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0,0,0,0.1);
+}
+.form-control:focus, .form-select:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+    background-color: white;
 }
 
-.btn-success {
-    background-color: #198754;
-    border-color: #198754;
+/* --- 表格 --- */
+#detailedRecordsSection .card { max-width: 95%; margin: 0 auto; }
+#detailedRecordsSection .card-body { padding: 0; }
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    font-size: 0.9rem;
+}
+.table thead th {
+    background-color: rgba(243, 244, 246, 0.7);
+    border-bottom: 2px solid rgba(0,0,0,0.1);
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+.table tbody tr { background-color: transparent; transition: background-color 0.2s ease; }
+.table tbody tr:not(:last-child) { border-bottom: 1px solid rgba(0,0,0,0.05); }
+.table tbody tr:hover { background-color: rgba(40, 167, 69, 0.1); }
+.table td, .table th { border-top: none !important; padding: 0.6rem 1rem; vertical-align: middle; }
+.table-responsive { max-height: 60vh; overflow-y: auto; }
+
+/* --- 表格中的操作按钮 --- */
+.btn-action {
+    background-color: transparent;
+    border: 1px solid transparent;
+    color: #6c757d; /* 柔和的灰色 */
+    border-radius: 50%; /* 圆形 */
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: all 0.2s ease-in-out;
+}
+.btn-action:hover {
+    background-color: #e9ecef; /* 悬停时出现浅灰色背景 */
+    color: #28a745; /* 悬停时图标变绿 */
+    transform: scale(1.1);
 }
 
-/* 页脚 */
-.footer.mt-auto {
-    background-color: #ffffff; /* 白色页脚 */
-    border-top: 1px solid #dee2e6; /* 添加一条细线分隔 */
+/* --- 加载动画 --- */
+#loading-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex; justify-content: center; align-items: center;
+    z-index: 9999; backdrop-filter: blur(4px); transition: opacity 0.3s;
 }
+.spinner {
+    width: 56px; height: 56px; border: 6px solid #28a745;
+    border-bottom-color: transparent; border-radius: 50%;
+    display: inline-block; box-sizing: border-box;
+    animation: rotation 1s linear infinite;
+}
+@keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
