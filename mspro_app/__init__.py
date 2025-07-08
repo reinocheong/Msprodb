@@ -1,8 +1,13 @@
 from flask import Flask
-from .extensions import db, login_manager
+from .extensions import db, login_manager, migrate
 from .routes import main as main_blueprint
 from .models import User
 import math
+import os
+from dotenv import load_dotenv
+
+basedir = os.path.abspath(os.path.dirname(__file__))
+load_dotenv(os.path.join(basedir, '.env'))
 
 def create_app():
     app = Flask(__name__)
@@ -10,6 +15,7 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
+    migrate.init_app(app, db)  # This line was missing
 
     # Register the custom filter
     @app.template_filter('clean_nan')
