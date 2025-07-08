@@ -30,6 +30,10 @@ def import_data_command():
         df_b = pd.concat((pd.read_excel(f, engine='openpyxl', dtype={'Booking Number': str}) for f in booking_files), ignore_index=True)
         print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(df_b)}")
         
+        # Handle potential typo in column name
+        if 'Patform Charge' in df_b.columns and 'Platform Charge' not in df_b.columns:
+            df_b.rename(columns={'Patform Charge': 'Platform Charge'}, inplace=True)
+
         df_b.rename(columns={
             'Unit Name': 'unit_name', 'CHECKIN': 'checkin', 'CHECKOUT': 'checkout',
             'Channel': 'channel', 'ON/OFFLINE': 'on_offline', 'Booking Number': 'booking_number',
