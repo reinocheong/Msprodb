@@ -1,4 +1,5 @@
-fix(Import): Add safeguard for out-of-range integer values
+fix(Import): Overhaul data cleaning and type casting
 
-- Added a data validation step in the import script (`wsgi.py`) to handle integers that are out of the standard range for a database integer type.
-- This prevents the `NumericValueOutOfRange` error during data import.
+- Implemented a definitive, robust data import script in wsgi.py. 
+- This version handles missing columns, typos, non-numeric values, and out-of-range integers gracefully by coercing all problematic data to safe defaults and explicitly casting data types before database insertion. 
+- This is the final fix for all data import errors.
