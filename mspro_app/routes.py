@@ -370,3 +370,99 @@ def change_password():
         return redirect(url_for('main.index'))
         
     return render_template('change_password.html', title='修改密码', form=form)
+
+@main.route('/delete_user/<user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.role != 'admin':
+        flash('您没有权限执行此操作。', 'danger')
+        return redirect(url_for('main.admin'))
+    
+    user_to_delete = User.query.get_or_404(user_id)
+    
+    if user_to_delete.id == current_user.id:
+        flash('您不能删除自己的账户。', 'warning')
+        return redirect(url_for('main.admin'))
+        
+    db.session.delete(user_to_delete)
+    db.session.commit()
+    flash(f'用户 {user_to_delete.id} 已被成功删除。', 'success')
+    return redirect(url_for('main.admin'))
+
+@main.route('/edit_booking/<string:booking_id>', methods=['GET', 'POST'])
+@login_required
+def edit_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    form = BookingForm(obj=booking)
+    if current_user.role == 'admin':
+        form.unit_name.choices = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    else:
+        form.unit_name.choices = current_user.allowed_units or []
+    
+    if form.validate_on_submit():
+        form.populate_obj(booking)
+        db.session.commit()
+        flash('预订信息已更新！', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('edit_booking.html', form=form, booking=booking, booking_id=booking_id)
+
+@main.route('/delete_booking/<string:booking_id>', methods=['POST'])
+@login_required
+def delete_booking(booking_id):
+    booking = Booking.query.get_or_404(booking_id)
+    db.session.delete(booking)
+    db.session.commit()
+    flash('预订信息已删除！', 'success')
+    return redirect(url_for('main.index'))
+
+@main.route('/edit_expense/<string:expense_id>', methods=['GET', 'POST'])
+@login_required
+def edit_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+    form = ExpenseForm(obj=expense)
+    if current_user.role == 'admin':
+        form.unit_name.choices = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
+    else:
+        form.unit_name.choices = current_user.allowed_units or []
+        
+    if form.validate_on_submit():
+        form.populate_obj(expense)
+        db.session.commit()
+        flash('费用信息已更新！', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('edit_expense.html', form=form, expense=expense, expense_id=expense_id)
+
+@main.route('/delete_expense/<string:expense_id>', methods=['POST'])
+@login_required
+def delete_expense(expense_id):
+    expense = Expense.query.get_or_404(expense_id)
+    db.session.delete(expense)
+    db.session.commit()
+    flash('费用信息已删除！', 'success')
+    return redirect(url_for('main.index'))
+
+@main.route('/add_booking', methods=['GET', 'POST'])
+@login_required
+def add_booking():
+    form = BookingForm()
+    if form.validate_on_submit():
+        new_booking = Booking()
+        form.populate_obj(new_booking)
+        db.session.add(new_booking)
+        db.session.commit()
+        flash('新预订已添加！', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('add_booking.html', form=form)
+
+@main.route('/add_expense', methods=['GET', 'POST'])
+@login_required
+def add_expense():
+    form = ExpenseForm()
+    if form.validate_on_submit():
+        new_expense = Expense()
+        form.populate_obj(new_expense)
+        db.session.add(new_expense)
+        db.session.commit()
+        flash('新费用已添加！', 'success')
+        return redirect(url_for('main.index'))
+    return render_template('add_expense.html', form=form)
