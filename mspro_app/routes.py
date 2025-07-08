@@ -439,8 +439,7 @@ def change_password():
         
         current_user.set_password(form.new_password.data)
         db.session.commit()
-        flash('您的密码已成功修改！', 'success')
+        flash('您的密码已成��修改！', 'success')
         return redirect(url_for('main.index'))
         
     return render_template('change_password.html', title='修改密码', form=form)
-

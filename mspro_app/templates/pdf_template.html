@@ -21,12 +21,12 @@
 
         <h3>财务总览</h3>
         <table class="summary-table">
-            <tr><td>预订总收入</td><td>{{ '%.2f' | format(summary.total_booking_revenue) }} MYR</td></tr>
-            <tr><td>月度总支出</td><td>{{ '%.2f' | format(summary.total_monthly_expenses) }} MYR</td></tr>
-            <tr><td>毛利</td><td>{{ '%.2f' | format(summary.gross_profit) }} MYR</td></tr>
-            <tr><td>管理费 (30%)</td><td>{{ '%.2f' | format(summary.management_fee) }} MYR</td></tr>
-            <tr><td><strong>当月净收入</strong></td><td><strong>{{ '%.2f' | format(summary.monthly_income) }} MYR</strong></td></tr>
-            <tr><td>入住率</td><td>{{ '%.2f' | format(summary.total_occupancy_rate) }}%</td></tr>
+            <tr><td>预订总收入</td><td>{{ '%.2f' | format(summary.total_booking_revenue or 0) }} MYR</td></tr>
+            <tr><td>月度总支出</td><td>{{ '%.2f' | format(summary.total_monthly_expenses or 0) }} MYR</td></tr>
+            <tr><td>毛利</td><td>{{ '%.2f' | format(summary.gross_profit or 0) }} MYR</td></tr>
+            <tr><td>管理费 ({{ '%.1f' | format(summary.fee_rate or 30.0) }}%)</td><td>{{ '%.2f' | format(summary.management_fee or 0) }} MYR</td></tr>
+            <tr><td><strong>当月净收入</strong></td><td><strong>{{ '%.2f' | format(summary.monthly_income or 0) }} MYR</strong></td></tr>
+            <tr><td>入住率</td><td>{{ '%.2f' | format(summary.total_occupancy_rate or 0) }}%</td></tr>
         </table>
 
         <h3>预订记录</h3>
@@ -77,7 +77,7 @@
                 <tr>
                     <td>{{ e.date }}</td>
                     <td>{{ e.particulars }}</td>
-                    <td>{{ '%.2f' | format(e.debit) }}</td>
+                    <td>{{ '%.2f' | format(e.debit or 0) }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="3">本月无支出记录。</td></tr>
