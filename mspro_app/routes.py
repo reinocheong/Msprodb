@@ -337,13 +337,18 @@ def api_detailed_data():
                 'channel': b.channel, 'on_offline': b.on_offline, 'pax': b.pax, 'duration': b.duration,
                 'price': clean_nan(b.price), 'cleaning_fee': clean_nan(b.cleaning_fee), 
                 'platform_charge': clean_nan(b.platform_charge), 'total_booking_revenue': clean_nan(b.total), 
-                'booking_number': str(b.booking_number) if b.booking_number else None
+                'booking_number': str(b.booking_number) if b.booking_number else None,
+                'additional_expense_category': None, 'additional_expense_amount': 0
             })
         for e in expenses:
             data.append({
                 'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'),
                 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
-                'particulars': e.particulars, 'debit': clean_nan(e.debit)
+                'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
+                'price': 0, 'cleaning_fee': 0, 'platform_charge': 0, 'total_booking_revenue': 0,
+                'booking_number': None,
+                'additional_expense_category': e.particulars, 
+                'additional_expense_amount': clean_nan(e.debit)
             })
         data.sort(key=lambda x: x['date']); return jsonify({'data': data})
     except Exception as e:
