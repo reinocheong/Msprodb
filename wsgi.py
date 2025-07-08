@@ -48,8 +48,8 @@ def import_data_command():
             df_b[col] = pd.to_numeric(df_b[col], errors='coerce').fillna(0)
 
         # Explicitly cast integer columns to a nullable integer type to avoid overflow
-        df_b['pax'] = df_b['pax'].astype('Int64')
-        df_b['duration'] = df_b['duration'].astype('Int64')
+        df_b['pax'] = pd.to_numeric(df_b['pax'], errors='coerce').fillna(0).astype(int)
+        df_b['duration'] = pd.to_numeric(df_b['duration'], errors='coerce').fillna(0).astype(int)
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
