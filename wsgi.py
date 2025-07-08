@@ -56,6 +56,12 @@ def import_data_command():
         for col in ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']:
             if col in df_b.columns:
                 df_b[col] = pd.to_numeric(df_b[col], errors='coerce')
+        
+        # Add a safeguard for integer columns to prevent out-of-range errors
+        for col in ['pax', 'duration']:
+            if col in df_b.columns:
+                # Replace out-of-range values with a default (e.g., NaN, which will be handled later)
+                df_b[col] = df_b[col].apply(lambda x: x if pd.notna(x) and abs(x) < 2147483647 else None)
 
         model_columns = [c.name for c in Booking.__table__.columns]
         final_df_b = df_b[df_b.columns.intersection(model_columns)]
