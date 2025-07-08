@@ -52,10 +52,10 @@
                     <td>{{ b.checkout }}</td>
                     <td>{{ b.duration }}</td>
                     <td>{{ b.channel }}</td>
-                    <td>{{ '%.2f' | format(b.price) }}</td>
-                    <td>{{ '%.2f' | format(b.cleaning_fee) }}</td>
-                    <td>{{ '%.2f' | format(b.platform_charge) }}</td>
-                    <td>{{ '%.2f' | format(b.total) }}</td>
+                    <td>{{ '%.2f' | format(b.price or 0) }}</td>
+                    <td>{{ '%.2f' | format(b.cleaning_fee or 0) }}</td>
+                    <td>{{ '%.2f' | format(b.platform_charge or 0) }}</td>
+                    <td>{{ '%.2f' | format(b.total or 0) }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="9">本月无预订记录。</td></tr>

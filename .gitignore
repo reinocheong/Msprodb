@@ -2,8 +2,30 @@
 .env
 
 # Python cache
+# Excel data files
+excel_data/
+
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# Database
+instance/
+*.sqlite
+*.db
+
+# IDE
+.vscode/
+.idea/
+
+# Render
+.render
+
 
 # Local database files
 *.sqlite3
