@@ -7,11 +7,13 @@ import os
 import glob
 import uuid
 import math
-from whitenoise import WhiteNoise
 
 app = create_app()
-# Wrap the app with WhiteNoise, pointing to the 'static' directory
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
+
+# Only apply WhiteNoise in production to avoid conflicts with dev server
+if os.environ.get("FLASK_ENV") == "production":
+    from whitenoise import WhiteNoise
+    app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
 
 @app.cli.command("import-data")
 @with_appcontext

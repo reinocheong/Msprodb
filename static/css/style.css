@@ -94,8 +94,8 @@ body {
 .btn-action {
     background-color: transparent;
     border: 1px solid transparent;
-    color: #6c757d; /* 柔和的灰色 */
-    border-radius: 50%; /* 圆形 */
+    color: #6c757d;
+    border-radius: 50%;
     width: 32px;
     height: 32px;
     display: inline-flex;
@@ -105,8 +105,8 @@ body {
     transition: all 0.2s ease-in-out;
 }
 .btn-action:hover {
-    background-color: #e9ecef; /* 悬停时出现浅灰色背景 */
-    color: #28a745; /* 悬停时图标变绿 */
+    background-color: #e9ecef;
+    color: #28a745;
     transform: scale(1.1);
 }
 
