@@ -29,10 +29,6 @@ def import_data_command():
         df_b = pd.concat((pd.read_excel(f, engine='openpyxl', dtype={'Booking Number': str}) for f in booking_files), ignore_index=True)
         print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(df_b)}")
         
-        # Handle potential typo in column name
-        if 'Patform Charge' in df_b.columns and 'Platform Charge' not in df_b.columns:
-            df_b.rename(columns={'Patform Charge': 'Platform Charge'}, inplace=True)
-
         df_b.rename(columns={
             'Unit Name': 'unit_name', 'CHECKIN': 'checkin', 'CHECKOUT': 'checkout',
             'Channel': 'channel', 'ON/OFFLINE': 'on_offline', 'Booking Number': 'booking_number',
@@ -40,16 +36,14 @@ def import_data_command():
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
-        # Ensure all numeric columns exist and handle non-numeric values by coercing them to NaN, then filling with 0
         numeric_cols = ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']
         for col in numeric_cols:
             if col not in df_b.columns:
                 df_b[col] = 0
             df_b[col] = pd.to_numeric(df_b[col], errors='coerce').fillna(0)
 
-        # Explicitly cast integer columns to a nullable integer type to avoid overflow
-        df_b['pax'] = pd.to_numeric(df_b['pax'], errors='coerce').fillna(0).astype(int)
-        df_b['duration'] = pd.to_numeric(df_b['duration'], errors='coerce').fillna(0).astype(int)
+        df_b['pax'] = df_b['pax'].astype(int)
+        df_b['duration'] = df_b['duration'].astype(int)
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
