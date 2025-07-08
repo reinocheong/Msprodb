@@ -33,16 +33,32 @@
         <table>
             <thead>
                 <tr>
-                    <th>入住日期</th><th>退房日期</th><th>天数</th><th>渠道</th><th>价格</th><th>总计</th>
+                    <th>预订号</th>
+                    <th>入住日期</th>
+                    <th>退房日期</th>
+                    <th>天数</th>
+                    <th>渠道</th>
+                    <th>价格</th>
+                    <th>打扫费</th>
+                    <th>平台费</th>
+                    <th>总计</th>
                 </tr>
             </thead>
             <tbody>
                 {% for b in bookings %}
                 <tr>
-                    <td>{{ b.checkin }}</td><td>{{ b.checkout }}</td><td>{{ b.duration }}</td><td>{{ b.channel }}</td><td>{{ '%.2f' | format(b.price) }}</td><td>{{ '%.2f' | format(b.total) }}</td>
+                    <td>{{ b.booking_number or '-' }}</td>
+                    <td>{{ b.checkin }}</td>
+                    <td>{{ b.checkout }}</td>
+                    <td>{{ b.duration }}</td>
+                    <td>{{ b.channel }}</td>
+                    <td>{{ '%.2f' | format(b.price) }}</td>
+                    <td>{{ '%.2f' | format(b.cleaning_fee) }}</td>
+                    <td>{{ '%.2f' | format(b.platform_charge) }}</td>
+                    <td>{{ '%.2f' | format(b.total) }}</td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6">本月无预订记录。</td></tr>
+                <tr><td colspan="9">本月无预订记录。</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -51,13 +67,17 @@
         <table>
             <thead>
                 <tr>
-                    <th>日期</th><th>描述</th><th>金额</th>
+                    <th>日期</th>
+                    <th>描述</th>
+                    <th>金额</th>
                 </tr>
             </thead>
             <tbody>
                 {% for e in expenses %}
                 <tr>
-                    <td>{{ e.date }}</td><td>{{ e.description }}</td><td>{{ '%.2f' | format(e.debit) }}</td>
+                    <td>{{ e.date }}</td>
+                    <td>{{ e.particulars }}</td>
+                    <td>{{ '%.2f' | format(e.debit) }}</td>
                 </tr>
                 {% else %}
                 <tr><td colspan="3">本月无支出记录。</td></tr>
