@@ -15,7 +15,12 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
-    migrate.init_app(app, db)  # This line was missing
+    migrate.init_app(app, db)
+
+    # This is the critical user loader function
+    @login_manager.user_loader
+    def load_user(user_id):
+        return User.query.get(user_id)
 
     # Register the custom filter
     @app.template_filter('clean_nan')
@@ -25,9 +30,5 @@ def create_app():
         return value
 
     app.register_blueprint(main_blueprint)
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(user_id)
 
     return app
