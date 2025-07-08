@@ -90,15 +90,19 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
-    if current_user.is_authenticated: return redirect(url_for('main.index'))
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
     form = LoginForm()
     if form.validate_on_submit():
         user = User.query.filter_by(id=form.username.data).first()
-        if user is None or not user.check_password(form.password.data):
-            flash('Invalid username or password', 'danger')
-            return redirect(url_for('main.login'))
-        login_user(user, remember=form.remember_me.data)
-        return redirect(url_for('main.index'))
+        if user is None:
+            flash(f"用户 '{form.username.data}' 未找到。", 'danger')
+        elif not user.check_password(form.password.data):
+            flash('密码不正确，请重试。', 'danger')
+        else:
+            login_user(user, remember=form.remember_me.data)
+            return redirect(url_for('main.index'))
+        return redirect(url_for('main.login'))
     return render_template('login.html', title='Sign In', form=form)
 
 @main.route('/logout')
