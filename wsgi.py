@@ -1,7 +1,6 @@
-from mspro_app import create_app
+from mspro_app import create_app, db
 import click
 from flask.cli import with_appcontext
-from mspro_app.extensions import db
 from mspro_app.models import User, Booking, Expense
 import pandas as pd
 import os
@@ -41,13 +40,8 @@ def import_data_command():
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
-        if 'platform_charge' not in df_b.columns:
-            print("WARNING: 'Platform Charge' column not found in one or more booking files. Defaulting to 0.")
-            df_b['platform_charge'] = 0
-
         if 'booking_number' in df_b.columns:
             df_b['booking_number'] = df_b['booking_number'].astype(str).fillna('')
-
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')
@@ -56,12 +50,6 @@ def import_data_command():
         for col in ['pax', 'duration', 'price', 'cleaning_fee', 'platform_charge', 'total']:
             if col in df_b.columns:
                 df_b[col] = pd.to_numeric(df_b[col], errors='coerce')
-        
-        # Add a safeguard for integer columns to prevent out-of-range errors
-        for col in ['pax', 'duration']:
-            if col in df_b.columns:
-                # Replace out-of-range values with a default (e.g., NaN, which will be handled later)
-                df_b[col] = df_b[col].apply(lambda x: x if pd.notna(x) and abs(x) < 2147483647 else None)
 
         model_columns = [c.name for c in Booking.__table__.columns]
         final_df_b = df_b[df_b.columns.intersection(model_columns)]
