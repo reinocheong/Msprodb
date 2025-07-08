@@ -37,8 +37,13 @@ def import_data_command():
             'CLEANING FEE': 'cleaning_fee', 'Platform Charge': 'platform_charge', 'TOTAL': 'total'
         }, inplace=True)
         
+        if 'platform_charge' not in df_b.columns:
+            print("WARNING: 'Platform Charge' column not found in one or more booking files. Defaulting to 0.")
+            df_b['platform_charge'] = 0
+
         if 'booking_number' in df_b.columns:
             df_b['booking_number'] = df_b['booking_number'].astype(str).fillna('')
+
 
         df_b['checkin'] = pd.to_datetime(df_b['checkin'], errors='coerce')
         df_b['checkout'] = pd.to_datetime(df_b['checkout'], errors='coerce')

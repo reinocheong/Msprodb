@@ -248,7 +248,7 @@ def api_detailed_data():
         
         data = []
         for b in bookings:
-            booking_data = {
+            data.append({
                 'type': 'booking', 'id': b.id, 'date': b.checkin.strftime('%Y-%m-%d'),
                 'unit_name': b.unit_name,
                 'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
@@ -258,11 +258,9 @@ def api_detailed_data():
                 'booking_number': str(b.booking_number) if b.booking_number else '-',
                 'additional_expense_category': '-', 
                 'additional_expense_amount': 0
-            }
-            data.append(booking_data)
-
+            })
         for e in expenses:
-            expense_data = {
+            data.append({
                 'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'),
                 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
                 'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
@@ -270,8 +268,7 @@ def api_detailed_data():
                 'booking_number': '-',
                 'additional_expense_category': e.particulars, 
                 'additional_expense_amount': clean_nan(e.debit)
-            }
-            data.append(expense_data)
+            })
 
         data.sort(key=lambda x: x['date']); 
         return jsonify({'data': data})
