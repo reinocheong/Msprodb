@@ -21,39 +21,29 @@ def clean_nan(value, default=0):
     return value
 
 def get_filtered_data(year, month=None, room_type=None):
-    """
-    Fetches bookings and expenses based on year, month, and room_type,
-    applying user-based permissions.
-    Admins can see all data. Owners can only see data for their allowed units.
-    """
-    # Base queries
     bookings_query = Booking.query
     expenses_query = Expense.query
 
-    # Apply user-based permissions
     if current_user.is_authenticated and current_user.role == 'owner':
         allowed_units = current_user.allowed_units or []
         bookings_query = bookings_query.filter(Booking.unit_name.in_(allowed_units))
-        # For expenses, include expenses linked to their units OR general expenses
         expenses_query = expenses_query.filter(
             or_(Expense.unit_name.in_(allowed_units), Expense.unit_name.is_(None), Expense.unit_name == '')
         )
 
-    # Apply time-based filters
-    bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
-    expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
+    if year:
+        bookings_query = bookings_query.filter(extract('year', Booking.checkin) == year)
+        expenses_query = expenses_query.filter(extract('year', Expense.date) == year)
     if month:
         bookings_query = bookings_query.filter(extract('month', Booking.checkin) == month)
         expenses_query = expenses_query.filter(extract('month', Expense.date) == month)
 
-    # Apply room_type filter
     if room_type and room_type != 'All':
-        # Owners should not be able to query for rooms they don't have access to
         if current_user.is_authenticated and current_user.role == 'owner':
             if room_type in current_user.allowed_units:
                 bookings_query = bookings_query.filter(Booking.unit_name == room_type)
                 expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name.is_(None)))
-        else: # Admin can filter by any room
+        else:
             bookings_query = bookings_query.filter(Booking.unit_name == room_type)
             expenses_query = expenses_query.filter(or_(Expense.unit_name == room_type, Expense.unit_name.is_(None)))
 
@@ -64,9 +54,8 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
     total_monthly_expenses = sum(clean_nan(e.debit) for e in expenses)
     gross_profit = total_booking_revenue - total_monthly_expenses
     
-    fee_rate = 30.0 # Default value
+    fee_rate = 30.0
     if current_user.is_authenticated:
-        # Use the user's specific fee, ensuring it's not None
         user_fee = getattr(current_user, 'management_fee_percentage', 30.0)
         if user_fee is not None:
             fee_rate = user_fee
@@ -97,20 +86,7 @@ def calculate_dashboard_data(bookings, expenses, year, month, room_type):
         'monthly_income': monthly_income, 'total_occupancy_rate': total_occupancy_rate,
         'revpar': revpar
     }
-    analysis = {}
-    if not month:
-        total_annual_revenue = total_booking_revenue
-        total_annual_expenses = total_monthly_expenses
-        total_annual_nights = total_nights_booked
-        analysis = {
-            'total_bookings_count': len(bookings),
-            'average_duration': np.mean([clean_nan(b.duration, 0) for b in bookings]) if bookings else 0,
-            'average_daily_rate': (total_annual_revenue / total_annual_nights) if total_annual_nights > 0 else 0,
-            'revpar': total_annual_revenue / (room_count * 365) if room_count > 0 else 0,
-            'average_monthly_revenue': total_annual_revenue / 12,
-            'average_monthly_expenses': total_annual_expenses / 12,
-        }
-    return summary, analysis
+    return summary, {}
 
 @main.route('/login', methods=['GET', 'POST'])
 def login():
@@ -147,94 +123,34 @@ def index():
     try:
         selected_year = request.args.get('year', datetime.now().year, type=int)
         
-        # Base query for years, filtered by user permissions
         years_query = db.session.query(extract('year', Booking.checkin)).distinct()
         if current_user.role == 'owner':
             years_query = years_query.filter(Booking.unit_name.in_(current_user.allowed_units or []))
         years_options = [y[0] for y in years_query.order_by(extract('year', Booking.checkin).desc()).all() if y[0]]
         
-        if not years_options: years_options = [selected_year]
+        if not years_options: years_options = [datetime.now().year]
+        if selected_year not in years_options: selected_year = years_options[0]
         
         months_options = [{'value': i, 'text': calendar.month_name[i]} for i in range(1, 13)]
         
-        # Filter room types based on user role
         if current_user.role == 'admin':
             room_types = ['All'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
-        else: # 'owner'
+        else:
             room_types = ['All'] + (current_user.allowed_units or [])
             
         return render_template('index.html', title='Dashboard', years_options=years_options, months_options=months_options, room_types=room_types, default_year=str(selected_year), current_user_role=current_user.role)
     except Exception as e:
         current_app.logger.error(f"Error in index route: {e}"); return "An internal error occurred.", 500
 
-@main.route('/add_booking', methods=['GET', 'POST'])
-@login_required
-def add_booking():
-    form = BookingForm()
-    # Restrict unit choices based on user role
-    if current_user.role == 'admin':
-        all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
-    else:
-        all_units = current_user.allowed_units or []
-    form.unit_name.choices = all_units
-    
-    if form.validate_on_submit():
-        # Security check: ensure owner doesn't submit a unit they don't own
-        if current_user.role == 'owner' and form.unit_name.data not in all_units:
-            flash('您无权为该房源添加预订。', 'danger')
-            return redirect(url_for('main.add_booking'))
-        new_booking = Booking(); form.populate_obj(new_booking)
-        db.session.add(new_booking); db.session.commit()
-        flash('新预订已成功添加!', 'success')
-        return redirect(url_for('main.index'))
-    return render_template('add_booking.html', title='新增预订', form=form, all_units=all_units)
-
-@main.route('/edit_booking/<booking_id>', methods=['GET', 'POST'])
-@login_required
-def edit_booking(booking_id):
-    booking = Booking.query.get_or_404(booking_id)
-    # Security check: ensure owner can only edit bookings for their units
-    if current_user.role == 'owner' and booking.unit_name not in (current_user.allowed_units or []):
-        flash('您无权编辑此预订。', 'danger')
-        return redirect(url_for('main.index'))
-        
-    form = BookingForm(obj=booking)
-    # Restrict unit choices based on user role
-    if current_user.role == 'admin':
-        all_units = [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
-    else:
-        all_units = current_user.allowed_units or []
-    form.unit_name.choices = all_units
-    
-    if form.validate_on_submit():
-        # Security check: ensure owner doesn't change unit to one they don't own
-        if current_user.role == 'owner' and form.unit_name.data not in all_units:
-            flash('您无权将预订分配给该房源。', 'danger')
-            return redirect(url_for('main.edit_booking', booking_id=booking_id))
-        form.populate_obj(booking); db.session.commit()
-        flash('预订信息已更新!', 'success')
-        return redirect(request.args.get('next') or url_for('main.index'))
-    return render_template('edit_booking.html', title='编辑预订', form=form, booking=booking, all_units=all_units)
-
-@main.route('/edit_expense/<expense_id>', methods=['GET', 'POST'])
-@login_required
-def edit_expense(expense_id):
-    expense = Expense.query.get_or_404(expense_id)
-    form = ExpenseForm(obj=expense)
-    all_units = ['_GENERAL_EXPENSE_'] + [r[0] for r in db.session.query(Booking.unit_name).distinct().order_by(Booking.unit_name).all() if r[0]]
-    form.unit_name.choices = all_units
-    if form.validate_on_submit():
-        form.populate_obj(expense); db.session.commit()
-        flash('支出信息已更新!', 'success')
-        return redirect(request.args.get('next') or url_for('main.index'))
-    return render_template('edit_expense.html', title='编辑支出', form=form, expense=expense, all_units=all_units)
-
 @main.route('/download_monthly_statement')
 @login_required
 def download_monthly_statement():
     try:
         year = request.args.get('year', datetime.now().year, type=int)
-        month = request.args.get('month', datetime.now().month, type=int)
+        month = request.args.get('month', type=int)
+        if not month:
+            flash('请选择一个月份来生成月结单。', 'warning')
+            return redirect(url_for('main.index'))
         room_type = request.args.get('room_type', 'All')
         bookings, expenses = get_filtered_data(year, month, room_type)
         summary, _ = calculate_dashboard_data(bookings, expenses, year, month, room_type)
@@ -266,7 +182,8 @@ def api_filter_data():
 def api_chart_data():
     try:
         year = request.args.get('year', datetime.now().year, type=int)
-        compare_year = request.args.get('compare_year', type=int)
+        compare_year_str = request.args.get('compare_year', '')
+        compare_year = int(compare_year_str) if compare_year_str.isdigit() else None
         room_type = request.args.get('room_type', 'All')
 
         def get_monthly_data(target_year):
@@ -328,9 +245,10 @@ def api_detailed_data():
         month_str = request.args.get('month', ''); month = int(month_str) if month_str.isdigit() else None
         room_type = request.args.get('room_type', 'All')
         bookings, expenses = get_filtered_data(year, month, room_type)
+        
         data = []
         for b in bookings:
-            data.append({
+            booking_data = {
                 'type': 'booking', 'id': b.id, 'date': b.checkin.strftime('%Y-%m-%d'),
                 'unit_name': b.unit_name,
                 'checkin': b.checkin.strftime('%Y-%m-%d'), 'checkout': b.checkout.strftime('%Y-%m-%d'),
@@ -340,9 +258,11 @@ def api_detailed_data():
                 'booking_number': str(b.booking_number) if b.booking_number else '-',
                 'additional_expense_category': '-', 
                 'additional_expense_amount': 0
-            })
+            }
+            data.append(booking_data)
+
         for e in expenses:
-            data.append({
+            expense_data = {
                 'type': 'expense', 'id': e.id, 'date': e.date.strftime('%Y-%m-%d'),
                 'unit_name': e.unit_name or '_GENERAL_EXPENSE_',
                 'checkin': '-', 'checkout': '-', 'channel': '-', 'on_offline': '-', 'pax': '-', 'duration': '-',
@@ -350,10 +270,14 @@ def api_detailed_data():
                 'booking_number': '-',
                 'additional_expense_category': e.particulars, 
                 'additional_expense_amount': clean_nan(e.debit)
-            })
-        data.sort(key=lambda x: x['date']); return jsonify({'data': data})
+            }
+            data.append(expense_data)
+
+        data.sort(key=lambda x: x['date']); 
+        return jsonify({'data': data})
     except Exception as e:
-        current_app.logger.error(f"Error in /api/detailed_data: {e}"); return jsonify({"error": "Internal server error"}), 500
+        current_app.logger.error(f"Error in /api/detailed_data: {e}"); 
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @main.route('/admin')
@@ -408,8 +332,6 @@ def request_password_reset(user_id):
     token = user.get_reset_password_token()
     reset_url = url_for('main.reset_password', token=token, _external=True)
     
-    # For now, we flash the URL for the admin to copy.
-    # In production, you would email this URL to the user.
     flash(f'请将此链接发送给用户以重置密码 (30分钟内有效): {reset_url}', 'info')
     return redirect(url_for('main.admin'))
 
@@ -440,7 +362,7 @@ def change_password():
         
         current_user.set_password(form.new_password.data)
         db.session.commit()
-        flash('您��密码已成功修改！', 'success')
+        flash('您的密码已成功修改！', 'success')
         return redirect(url_for('main.index'))
         
     return render_template('change_password.html', title='修改密码', form=form)
