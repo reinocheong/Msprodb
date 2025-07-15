@@ -7,6 +7,7 @@ import os
 import glob
 import uuid
 import math
+from datetime import datetime
 
 app = create_app()
 
@@ -23,7 +24,6 @@ def import_data_command():
     
     # --- Step 1: Clear existing data without dropping tables ---
     try:
-        # Use a more targeted deletion that is database-agnostic
         db.session.query(Booking).delete()
         db.session.query(Expense).delete()
         db.session.commit()
@@ -39,7 +39,8 @@ def import_data_command():
     # --- Booking Data Processing ---
     booking_files = [f for f in glob.glob(os.path.join(DATA_FOLDER, '*Booking.xlsx')) if not os.path.basename(f).startswith('~$')]
     if booking_files:
-        df_b = pd.concat((pd.read_excel(f, engine='openpyxl', dtype={'Booking Number': str}) for f in booking_files), ignore_index=True)
+        # Using a more robust engine for booking files as well
+        df_b = pd.concat((pd.read_excel(f, engine='calamine', dtype={'Booking Number': str}) for f in booking_files), ignore_index=True)
         print(f"Found and merged {len(booking_files)} booking files. Total rows: {len(df_b)}")
         
         df_b.rename(columns={
@@ -73,26 +74,21 @@ def import_data_command():
     # --- Expense Data Processing ---
     expense_files = [f for f in glob.glob(os.path.join(DATA_FOLDER, '*expenses*.xlsx')) if not os.path.basename(f).startswith('~$')]
     if expense_files:
-        df_e = pd.concat((pd.read_excel(f, engine='openpyxl') for f in expense_files), ignore_index=True)
+        # Using 'calamine' engine, which is more robust for various .xlsx formats
+        df_e = pd.concat((pd.read_excel(f, engine='calamine') for f in expense_files), ignore_index=True)
         print(f"Found and merged {len(expense_files)} expense files. Total rows: {len(df_e)}")
         
-        # --- Robustly coalesce alternate column names into a standard set ---
-        column_map = {
-            'Expenses Date': 'Date',
-            'PARTICULARS': 'Particulars',
-            'DEBIT': 'Amount'
-        }
+        column_map = {'Expenses Date': 'Date', 'PARTICULARS': 'Particulars', 'DEBIT': 'Amount'}
         for old_col, new_col in column_map.items():
             if old_col in df_e.columns:
                 if new_col not in df_e.columns:
                     df_e[new_col] = df_e[old_col]
                 else:
-                    # Use the recommended, future-proof way to fill NaN values
                     df_e[new_col] = df_e[new_col].fillna(df_e[old_col])
         
-        df_e.rename(columns={'Date': 'date', 'Unit Name': 'unit_name', 'Particulars': 'particulars', 'Amount': 'debit'}, inplace=True)
+        df_e.rename(columns={'Unit Name': 'unit_name', 'Particulars': 'particulars', 'Amount': 'debit'}, inplace=True)
         
-        df_e['date'] = pd.to_datetime(df_e['date'], errors='coerce')
+        df_e['date'] = pd.to_datetime(df_e['Date'], errors='coerce')
         df_e['debit'] = pd.to_numeric(df_e['debit'], errors='coerce').fillna(0)
         df_e.dropna(subset=['date', 'debit'], inplace=True)
 
