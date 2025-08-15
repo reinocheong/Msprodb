@@ -4,11 +4,20 @@ FROM python:3.9-slim
 WORKDIR /app
 
 # Install system dependencies
-# - wkhtmltopdf: for PDF generation
-# - fonts-noto-cjk: for Chinese font support in PDFs
+# Step 1: Update apt and install necessary tools including fonts
 RUN apt-get update && \
-    apt-get install -y wkhtmltopdf fonts-noto-cjk && \
-    apt-get clean
+    apt-get install -y --no-install-recommends \
+    curl \
+    fonts-noto-cjk \
+    && apt-get clean
+
+# Step 2: Download and install a specific, known-working version of wkhtmltopdf
+# This version is for Debian 12 (Bookworm), which is compatible with the base image.
+RUN curl -L -o wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb && \
+    dpkg -i wkhtmltox.deb && \
+    # Install any missing dependencies and then clean up
+    apt-get install -f -y && \
+    rm wkhtmltox.deb
 
 # Copy the requirements file and install Python dependencies
 COPY requirements.txt .
@@ -22,4 +31,3 @@ RUN chmod +x ./start.sh
 
 # Command to run the application
 CMD ["./start.sh"]
-
