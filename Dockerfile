@@ -3,21 +3,28 @@ FROM python:3.9-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-# Step 1: Update apt and install necessary tools including fonts
+# Define the version of wkhtmltopdf to install
+ENV WKHTMLTOPDF_VERSION 0.12.6.1-2
+
+# Install system dependencies and wkhtmltopdf from pre-compiled binary
 RUN apt-get update && \
+    # Install necessary tools: xz-utils for decompression, fonts for PDF content
     apt-get install -y --no-install-recommends \
     curl \
+    xz-utils \
     fonts-noto-cjk \
-    && apt-get clean
-
-# Step 2: Download and install a specific, known-working version of wkhtmltopdf
-# This version is for Debian 12 (Bookworm), which is compatible with the base image.
-RUN curl -L -o wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-3/wkhtmltox_0.12.6.1-3.bookworm_amd64.deb && \
-    dpkg -i wkhtmltox.deb && \
-    # Install any missing dependencies and then clean up
-    apt-get install -f -y && \
-    rm wkhtmltox.deb
+    && \
+    # Download the generic amd64 binary for buster, which is highly compatible
+    curl -L -o wkhtmltox.deb \
+    "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.buster_amd64.deb" && \
+    # The .deb file is just an archive. We can extract the contents directly.
+    # This avoids dpkg and its dependency issues.
+    dpkg-deb -xv wkhtmltox.deb / && \
+    # Clean up downloaded file
+    rm wkhtmltox.deb && \
+    # Clean apt cache
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file and install Python dependencies
 COPY requirements.txt .
