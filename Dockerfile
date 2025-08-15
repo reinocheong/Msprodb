@@ -1,6 +1,5 @@
 FROM python:3.9-slim
 
-# Set the working directory in the container
 WORKDIR /app
 
 # Define the version of wkhtmltopdf to install
@@ -8,21 +7,32 @@ ENV WKHTMLTOPDF_VERSION 0.12.6.1-2
 
 # Install system dependencies and wkhtmltopdf from pre-compiled binary
 RUN apt-get update && \
-    # Install necessary tools: xz-utils for decompression, fonts for PDF content
+    # Install necessary tools:
+    # - curl: to download the package
+    # - binutils: provides the 'ar' command to unpack .deb archives
+    # - xz-utils: to decompress the .tar.xz data file
+    # - fonts-noto-cjk: for CJK font support in PDFs
     apt-get install -y --no-install-recommends \
     curl \
+    binutils \
     xz-utils \
     fonts-noto-cjk \
     && \
-    # Download the generic amd64 binary for buster, which is highly compatible
+    # Download the debian package
     curl -L -o wkhtmltox.deb \
     "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.buster_amd64.deb" && \
-    # The .deb file is just an archive. We can extract the contents directly.
-    # This avoids dpkg and its dependency issues.
-    dpkg-deb -xv wkhtmltox.deb / && \
-    # Clean up downloaded file
-    rm wkhtmltox.deb && \
-    # Clean apt cache
+    # A .deb file is an 'ar' archive. Extract it.
+    ar x wkhtmltox.deb && \
+    # The archive contains data.tar.xz, which holds the program files. Extract it.
+    tar -xvf data.tar.xz && \
+    # Copy the main executables to a directory in the system's PATH
+    cp ./usr/local/bin/wkhtmltopdf /usr/local/bin/ && \
+    cp ./usr/local/bin/wkhtmltoimage /usr/local/bin/ && \
+    # Clean up all the temporary files
+    rm wkhtmltox.deb debian-binary control.tar.gz data.tar.xz && \
+    rm -rf ./usr && \
+    # Clean apt cache to keep the image small
+    apt-get purge -y --auto-remove curl binutils xz-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
