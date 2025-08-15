@@ -2,15 +2,16 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-# Use the bullseye package, which is a better fit for python:3.9's base OS (Debian 11)
 ENV WKHTMLTOPDF_VERSION 0.12.6.1-2
 
 # Install dependencies, download, extract, and clean up in a single layer
 RUN apt-get update && \
+    # Install all necessary tools, including 'file' for verification
     apt-get install -y --no-install-recommends \
     curl \
     binutils \
     xz-utils \
+    file \
     fonts-noto-cjk \
     && \
     # Download the debian package for bullseye
@@ -20,18 +21,16 @@ RUN apt-get update && \
     echo "Verifying downloaded file type:" && \
     file wkhtmltox.deb && \
     # -------------------------
-    # A .deb file is an 'ar' archive. Extract it.
+    # Extract the deb archive and its contents
     ar x wkhtmltox.deb && \
-    # The archive contains data.tar.xz, which holds the program files. Extract it.
     tar -xvf data.tar.xz && \
-    # Copy the main executables to a directory in the system's PATH
+    # Copy the executables to a directory in the system's PATH
     cp ./usr/local/bin/wkhtmltopdf /usr/local/bin/ && \
     cp ./usr/local/bin/wkhtmltoimage /usr/local/bin/ && \
     # Clean up all the temporary files
     rm wkhtmltox.deb debian-binary control.tar.gz data.tar.xz && \
     rm -rf ./usr && \
     # Clean apt cache to keep the image small
-    apt-get purge -y --auto-remove curl binutils xz-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
