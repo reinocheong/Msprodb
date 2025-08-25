@@ -17,6 +17,11 @@ RUN apt-get update && \
     libpng16-16 \
     libxrender1 \
     libfontconfig1 \
+    libssl1.1 \
+    libxext6 \
+    libfreetype6 \
+    zlib1g \
+    ca-certificates \
     && \
     # Download the debian package for bullseye
     curl -L -o wkhtmltox.deb \
