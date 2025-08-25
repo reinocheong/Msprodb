@@ -14,6 +14,7 @@ RUN apt-get update && \
     file \
     fonts-noto-cjk \
     libjpeg62-turbo \
+    libpng16-16 \
     && \
     # Download the debian package for bullseye
     curl -L -o wkhtmltox.deb \
