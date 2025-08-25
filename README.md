@@ -3,7 +3,7 @@
 ## 简介
 MSPRO 财务管理系统是一个基于 Flask 开发的 Web 应用，旨在为公寓或酒店管理者提供一个清晰、直观的预订与财务数据分析平台。系统支持多用户权限管理，能够展示详细的收入、支出、入住率等核心指标，并能一键生成专业的月度财务报表。
 
-核心数据通过本地 Excel 文件进行维护，并通过命令行工具一键同步至线上生产数据库，确保数据管理的灵活性与安全性。
+核心数据通过本地 Excel 文件进行维护，并通过命令行工具一键同步至线上生产数据库，确保数据管理的灵活与安全性。
 
 ---
 
@@ -31,7 +31,7 @@ MSPRO 财务管理系统是一个基于 Flask 开发的 Web 应用，旨在为�
 - **前端**: HTML, CSS, JavaScript, Chart.js
 - **认证**: Flask-Login, Flask-WTF
 - **部署**: Docker, Gunicorn, Whitenoise
-- **数据处理**: Pandas, openpyxl
+- **数据处理**: Pandas, openpyxl, python-calamine
 - **PDF 生成**: pdfkit, wkhtmltopdf
 
 ---
@@ -56,6 +56,8 @@ MSPRO 财务管理系统是一个基于 Flask 开发的 Web 应用，旨在为�
 3.  **安装依赖**
     ```bash
     pip install -r requirements.txt
+    # 建议安装 calamine 引擎以获得最佳 Excel 解析性能
+    pip install python-calamine
     ```
 
 4.  **配置环境变量**
@@ -94,7 +96,7 @@ MSPRO 财务管理系统是一个基于 Flask 开发的 Web 应用，旨在为�
 
 ---
 
-## 数据管理
+## 数据管理：核心工作流程
 
 本项目最核心的工作流程是**从本地 Excel 更新数据到生产数据库**。
 
@@ -118,6 +120,28 @@ MSPRO 财务管理系统是一个基于 Flask 开发的 Web 应用，旨在为�
 -   `start.sh`: 作为容器的启动命令。它首先执行 `flask db upgrade` 来确保数据库结构是最新状态，然后使用 Gunicorn 启动 Web 服务器。
 
 每次将代码推送到关联的 GitHub 仓库时，Render 都会自动触发新的构建和部署。
+
+---
+
+## 部署问题排查 (Troubleshooting)
+
+### 数据库连接问题
+
+-   **症状**: 网站随机出现 `SSL connection has been closed unexpectedly` 错误，导致页面无法访问。
+-   **根本原因**: Render 平台的数据库在闲置一段时间后会自动休眠，导致应用持有的数据库连接失效。
+-   **解决方案**: 修改 `config.py` 文件，添加 `SQLALCHEMY_ENGINE_OPTIONS = {'pool_pre_ping': True}` 配置。这会使 SQLAlchemy 在每次使用连接前都进行一次“心跳”检测，如果连接已断开则自动重连。
+
+### Docker 构建失败问题 (wkhtmltopdf)
+
+-   **症状**: 推送代码后，在 Render 上的部署构建环节失败，报错 `Package 'wkhtmltopdf' has no installation candidate` 或 `exit code: 1, 2, 127`。
+-   **根本原因**: Render 更新了其用于构建的 Docker 基础镜像 (`python:3.9-slim`)。新镜像的底层操作系统（如 Debian 11/12）的官方软件源中不再包含 `wkhtmltopdf` 这个包，导致 `apt-get install` 失败。
+-   **最终解决方案**: `Dockerfile` 采用了最健壮的手动安装方法：
+    1.  通过 `apt-get` 安装基础工具链 (`curl`, `binutils`, `xz-utils`, `file`) 和系统依赖（如 `libxrender1`）。
+    2.  使用 `curl` 从 `wkhtmltopdf` 官方 GitHub 下载一个已知兼容的 `.deb` 包。
+    3.  **不使用 `dpkg` 安装**，而是用 `ar x` 和 `tar -xvf` 命令手动解压 `.deb` 包。
+    4.  将解压出来的 `wkhtmltopdf` 和 `wkhtmltoimage` 两个核心可执行文件直接复制到系统路径 `/usr/local/bin/` 下。
+    5.  清理所有下载和解压的临时文件。
+-   **结论**: 此方法完全绕过了操作系统的包管理器，直接安装预编译的二进制文件，可以最大限度地抵抗未来基础环境的变更，确保部署的稳定性。
 
 ---
 

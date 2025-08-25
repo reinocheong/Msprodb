@@ -16,6 +16,7 @@ RUN apt-get update && \
     libjpeg62-turbo \
     libpng16-16 \
     libxrender1 \
+    libfontconfig1 \
     && \
     # Download the debian package for bullseye
     curl -L -o wkhtmltox.deb \
