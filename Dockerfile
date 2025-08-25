@@ -2,7 +2,7 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-ENV WKHTMLTOPDF_VERSION 0.12.6.1-2
+ENV WKHTMLTOPDF_VERSION 0.12.6.1-3
 
 # Install dependencies, download, extract, and clean up in a single layer
 RUN apt-get update && \
