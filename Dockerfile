@@ -6,7 +6,7 @@ ENV WKHTMLTOPDF_VERSION 0.12.6.1-2
 
 # Install dependencies, download, extract, and clean up in a single layer
 RUN apt-get update && \
-    # Install all necessary tools, including 'file' for verification
+    # Install all necessary tools for the Bookworm environment
     apt-get install -y --no-install-recommends \
     curl \
     binutils \
@@ -17,15 +17,15 @@ RUN apt-get update && \
     libpng16-16 \
     libxrender1 \
     libfontconfig1 \
-    libssl1.1 \
+    libssl3 \
     libxext6 \
     libfreetype6 \
     zlib1g \
     ca-certificates \
     && \
-    # Download the debian package for bullseye
+    # Download the debian package specifically for bookworm
     curl -L -o wkhtmltox.deb \
-    "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.bullseye_amd64.deb" && \
+    "https://github.com/wkhtmltopdf/packaging/releases/download/${WKHTMLTOPDF_VERSION}/wkhtmltox_${WKHTMLTOPDF_VERSION}.bookworm_amd64.deb" && \
     # --- Verification Step ---
     echo "Verifying downloaded file type:" && \
     file wkhtmltox.deb && \
